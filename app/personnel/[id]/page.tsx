@@ -17,7 +17,8 @@ import {
   SlidersHorizontal,
   FileText,
   Briefcase,
-  HeartPulse
+  HeartPulse,
+  Mail
 } from 'lucide-react';
 import { personnelService, REMOVED_FIELD_KEYS } from '@/lib/personnelService';
 import { Personnel, FieldDefinition, DisplayFieldSetting } from '@/types/personnel';
@@ -187,38 +188,89 @@ export default function PersonnelDetailPage() {
     );
   }
 
-  // Label-Value Item with tap-to-copy
+  // Label-Value Item with tap-to-copy & responsive sizing
   const GridItem = ({ 
     label, 
     value, 
-    isPhone = false 
+    fieldKey,
   }: { 
     label: string; 
     value?: string | number | null;
-    isPhone?: boolean;
+    fieldKey?: string;
   }) => {
     const valStr = value !== undefined && value !== null && value !== '' ? String(value) : '-';
     const isCopied = copiedField === label;
+    const isEmail = fieldKey === 'email' || label.toLowerCase().includes('อีเมล') || label.toLowerCase().includes('email');
+    const isPhone = fieldKey === 'phone_number' || label.includes('เบอร์');
+    const isNotes = fieldKey === 'notes' || label.includes('หมายเหตุ');
+    const isBlood = fieldKey === 'blood_group' || label === 'กลุ่มเลือด';
+    const isLine = fieldKey === 'line_id' || label.toLowerCase().includes('line');
+
+    // Give ample width to wide content:
+    // Email spans full width on mobile (col-span-2) and 2 columns on tablet/desktop (sm:col-span-2 lg:col-span-2)
+    // Notes spans full row (col-span-2 sm:col-span-3 lg:col-span-4)
+    let colSpanClass = 'col-span-1';
+    if (isEmail) {
+      colSpanClass = 'col-span-2 sm:col-span-2 lg:col-span-2';
+    } else if (isNotes) {
+      colSpanClass = 'col-span-2 sm:col-span-3 lg:col-span-4';
+    }
 
     return (
       <div 
         onClick={() => valStr !== '-' && handleCopy(valStr, label)}
-        className="bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:border-blue-300 transition-all cursor-pointer relative group active:scale-[0.99]"
+        className={`${colSpanClass} bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:border-blue-300 transition-all cursor-pointer relative group active:scale-[0.99] flex flex-col justify-between`}
       >
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-tight">
-            {label}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-tight flex items-center space-x-1.5">
+            {isEmail && <Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+            {isPhone && <Phone className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
+            {isLine && <MessageSquare className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
+            {isNotes && <FileText className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+            <span>{label}</span>
           </span>
           {valStr !== '-' && (
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
-              {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-            </span>
+            <div className="flex items-center space-x-1 text-slate-400 group-hover:text-blue-600 transition-colors">
+              <span className="text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                {isCopied ? 'คัดลอกแล้ว' : 'แตะเพื่อคัดลอก'}
+              </span>
+              <span>
+                {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              </span>
+            </div>
           )}
         </div>
-        <div className="text-base sm:text-lg md:text-xl font-black text-slate-900 break-words flex items-center justify-between">
-          <span className={label === 'กลุ่มเลือด' ? 'text-red-600 font-black text-xl sm:text-2xl' : ''}>
-            {valStr}
-          </span>
+
+        <div className="min-w-0 flex items-center justify-between mt-0.5">
+          {isEmail && valStr !== '-' ? (
+            <a
+              href={`mailto:${valStr}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm sm:text-base md:text-lg font-mono font-bold text-blue-600 hover:text-blue-800 hover:underline break-all tracking-tight select-all leading-snug"
+              title={`ส่งอีเมลถึง ${valStr}`}
+            >
+              {valStr}
+            </a>
+          ) : isPhone && valStr !== '-' ? (
+            <a
+              href={`tel:${valStr.replace(/[^0-9]/g, '')}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-base sm:text-lg md:text-xl font-mono font-black text-slate-900 hover:text-emerald-700 break-words"
+            >
+              {valStr}
+            </a>
+          ) : (
+            <span 
+              className={`
+                ${isBlood ? 'text-red-600 font-black text-xl sm:text-2xl' : ''}
+                ${isEmail ? 'text-sm sm:text-base md:text-lg font-mono font-bold text-slate-900 break-all' : ''}
+                ${isNotes ? 'text-sm sm:text-base font-medium text-slate-800 break-words' : ''}
+                ${!isBlood && !isEmail && !isNotes ? 'text-base sm:text-lg md:text-xl font-black text-slate-900 break-words' : ''}
+              `}
+            >
+              {valStr}
+            </span>
+          )}
         </div>
       </div>
     );
@@ -347,7 +399,7 @@ export default function PersonnelDetailPage() {
                         key={field.key}
                         label={field.label}
                         value={val}
-                        isPhone={field.key === 'phone_number'}
+                        fieldKey={field.key}
                       />
                     );
                   })}

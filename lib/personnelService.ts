@@ -104,6 +104,31 @@ const getLocalPersonnel = (): Personnel[] => {
       const last_name_th = p.last_name_th || split.last_name_th;
       const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th) || 'ไม่ระบุชื่อ';
 
+      const gender = p.gender || cleanCustom.gender || '';
+      const age = p.age !== undefined && p.age !== null ? p.age : (cleanCustom.age ?? '');
+      const email = p.email || cleanCustom.email || '';
+      const line_id = p.line_id || cleanCustom.line_id || '';
+      const notes = p.notes || cleanCustom.notes || '';
+      const affiliation = p.affiliation || cleanCustom.affiliation || '';
+      const commander = p.commander || cleanCustom.commander || '';
+      const rank_date = p.rank_date || cleanCustom.rank_date || '';
+      const personnel_category = p.personnel_category || cleanCustom.personnel_category || '';
+      const reserve_code = p.reserve_code || cleanCustom.reserve_code || '';
+
+      const mergedCustom = {
+        ...cleanCustom,
+        gender,
+        age,
+        email,
+        line_id,
+        notes,
+        affiliation,
+        commander,
+        rank_date,
+        personnel_category,
+        reserve_code,
+      };
+
       return {
         ...p,
         rank_th,
@@ -117,7 +142,17 @@ const getLocalPersonnel = (): Personnel[] => {
         duty_status: p.duty_status || 'ทบ.',
         field_position: p.field_position,
         passport_no: p.passport_no,
-        custom_fields: cleanCustom,
+        gender,
+        age,
+        email,
+        line_id,
+        notes,
+        affiliation,
+        commander,
+        rank_date,
+        personnel_category,
+        reserve_code,
+        custom_fields: mergedCustom,
       };
     });
   } catch (e) {
@@ -158,6 +193,19 @@ const saveLocalFields = (list: FieldDefinition[]): void => {
   }
 };
 
+export const SEPARATED_COLUMNS = new Set([
+  'gender',
+  'age',
+  'email',
+  'line_id',
+  'notes',
+  'affiliation',
+  'commander',
+  'rank_date',
+  'personnel_category',
+  'reserve_code',
+]);
+
 const SUPABASE_PERSONNEL_COLUMNS = new Set([
   'id',
   'service_code',
@@ -188,14 +236,30 @@ const SUPABASE_PERSONNEL_COLUMNS = new Set([
   'updated_at',
 ]);
 
+let detectedHasSeparatedColumns: boolean | null = null;
+
 const prepareSupabasePayload = (record: Record<string, any>, isUpdate: boolean = false) => {
   const clean: Record<string, any> = {};
   const custom = { ...(record.custom_fields || {}) };
 
+  // Sync separated columns between top-level and custom_fields
+  SEPARATED_COLUMNS.forEach((col) => {
+    if (record[col] !== undefined && record[col] !== null) {
+      custom[col] = record[col];
+    } else if (custom[col] !== undefined && custom[col] !== null && record[col] === undefined) {
+      record[col] = custom[col];
+    }
+  });
+
   for (const [key, val] of Object.entries(record)) {
-    if (SUPABASE_PERSONNEL_COLUMNS.has(key)) {
+    const isSeparatedCol = SEPARATED_COLUMNS.has(key);
+    const allowCol = SUPABASE_PERSONNEL_COLUMNS.has(key) || (isSeparatedCol && detectedHasSeparatedColumns === true);
+
+    if (allowCol) {
       if (key === 'birth_date') {
         clean[key] = (val && String(val).trim() !== '') ? String(val).trim() : null;
+      } else if (key === 'age') {
+        clean[key] = val !== null && val !== undefined && val !== '' ? Number(val) : null;
       } else if (key === 'service_code') {
         clean[key] = (val && String(val).trim() !== '') 
           ? String(val).trim() 
@@ -246,6 +310,31 @@ const mapFromSupabase = (p: any): Personnel => {
   const fallbackPhoto = initialPhotoMap.get(p.id) || '';
   const photo_url = (p.photo_url && String(p.photo_url).trim() !== '') ? p.photo_url : fallbackPhoto;
 
+  const gender = p.gender || custom.gender || '';
+  const age = p.age !== undefined && p.age !== null ? p.age : (custom.age ?? '');
+  const email = p.email || custom.email || '';
+  const line_id = p.line_id || custom.line_id || '';
+  const notes = p.notes || custom.notes || '';
+  const affiliation = p.affiliation || custom.affiliation || '';
+  const commander = p.commander || custom.commander || '';
+  const rank_date = p.rank_date || custom.rank_date || '';
+  const personnel_category = p.personnel_category || custom.personnel_category || '';
+  const reserve_code = p.reserve_code || custom.reserve_code || '';
+
+  const mergedCustom = {
+    ...custom,
+    gender,
+    age,
+    email,
+    line_id,
+    notes,
+    affiliation,
+    commander,
+    rank_date,
+    personnel_category,
+    reserve_code,
+  };
+
   return {
     ...p,
     rank_th,
@@ -257,7 +346,17 @@ const mapFromSupabase = (p: any): Personnel => {
     phone_number: p.phone_number !== null && p.phone_number !== undefined ? String(p.phone_number) : '',
     military_id: p.military_id !== null && p.military_id !== undefined ? String(p.military_id) : '',
     citizen_id: p.citizen_id !== null && p.citizen_id !== undefined ? String(p.citizen_id) : '',
-    custom_fields: custom,
+    gender,
+    age,
+    email,
+    line_id,
+    notes,
+    affiliation,
+    commander,
+    rank_date,
+    personnel_category,
+    reserve_code,
+    custom_fields: mergedCustom,
   };
 };
 
@@ -273,6 +372,10 @@ export const personnelService = {
       if (error) {
         console.error('Supabase fetch failed:', error);
         throw new Error(`ไม่สามารถเชื่อมต่อดึงข้อมูลจาก Supabase: ${error.message}`);
+      }
+      if (data && data.length > 0) {
+        const sample = data[0];
+        detectedHasSeparatedColumns = ('gender' in sample || 'email' in sample);
       }
       return (data || []).map(mapFromSupabase);
     }
@@ -299,6 +402,9 @@ export const personnelService = {
           if (error) {
             console.warn('Supabase getById query error:', error.message);
             return null;
+          }
+          if (data) {
+            detectedHasSeparatedColumns = ('gender' in data || 'email' in data);
           }
           return data ? mapFromSupabase(data) : null;
         } catch (e) {

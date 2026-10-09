@@ -56,6 +56,15 @@ function EditPersonnelForm() {
     religion: 'พุทธ',
     birth_date: '',
     photo_url: '',
+    gender: 'ชาย',
+    age: '',
+    email: '',
+    line_id: '',
+    affiliation: '',
+    commander: '',
+    rank_date: '',
+    personnel_category: 'สัญญาบัตร',
+    notes: '',
   });
 
   const [customFields, setCustomFields] = useState<Record<string, any>>({});
@@ -98,6 +107,15 @@ function EditPersonnelForm() {
             religion: personnel.religion || 'พุทธ',
             birth_date: personnel.birth_date || '',
             photo_url: personnel.photo_url || '',
+            gender: personnel.gender || personnel.custom_fields?.gender || 'ชาย',
+            age: personnel.age !== undefined && personnel.age !== null ? String(personnel.age) : (personnel.custom_fields?.age ? String(personnel.custom_fields.age) : ''),
+            email: personnel.email || personnel.custom_fields?.email || '',
+            line_id: personnel.line_id || personnel.custom_fields?.line_id || '',
+            affiliation: personnel.affiliation || personnel.custom_fields?.affiliation || '',
+            commander: personnel.commander || personnel.custom_fields?.commander || '',
+            rank_date: personnel.rank_date || personnel.custom_fields?.rank_date || '',
+            personnel_category: personnel.personnel_category || personnel.custom_fields?.personnel_category || 'สัญญาบัตร',
+            notes: personnel.notes || personnel.custom_fields?.notes || '',
           });
           setCustomFields(personnel.custom_fields || {});
         }
@@ -141,7 +159,19 @@ function EditPersonnelForm() {
       await personnelService.update(id, {
         ...formData,
         full_name_th,
-        custom_fields: customFields,
+        age: formData.age ? Number(formData.age) : null,
+        custom_fields: {
+          ...customFields,
+          gender: formData.gender,
+          age: formData.age ? Number(formData.age) : null,
+          email: formData.email,
+          line_id: formData.line_id,
+          affiliation: formData.affiliation,
+          commander: formData.commander,
+          rank_date: formData.rank_date,
+          personnel_category: formData.personnel_category,
+          notes: formData.notes,
+        },
       });
       router.push(`/personnel/${id}`);
     } catch (err: any) {
@@ -262,6 +292,62 @@ function EditPersonnelForm() {
                 type="text"
                 name="salary_step"
                 value={formData.salary_step}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                สังกัดเดิม (affiliation)
+              </label>
+              <input
+                type="text"
+                name="affiliation"
+                placeholder="เช่น พัน.ช.๕๒"
+                value={formData.affiliation}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                ผู้บังคับบัญชา (commander)
+              </label>
+              <input
+                type="text"
+                name="commander"
+                placeholder="เช่น ผบ.ร้อย."
+                value={formData.commander}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                ประเภทกำลังพล
+              </label>
+              <select
+                name="personnel_category"
+                value={formData.personnel_category}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+              >
+                <option value="สัญญาบัตร">สัญญาบัตร</option>
+                <option value="ประทวน">ประทวน</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                ยศปัจจุบันเมื่อ (rank_date)
+              </label>
+              <input
+                type="text"
+                name="rank_date"
+                placeholder="เช่น 1 ต.ค. 65"
+                value={formData.rank_date}
                 onChange={handleChange}
                 className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
@@ -464,6 +550,80 @@ function EditPersonnelForm() {
                 type="date"
                 name="birth_date"
                 value={formData.birth_date}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              />
+            </div>
+          </div>
+
+          {/* แถวที่ 2: เพศ, อายุ, อีเมล */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                เพศ (gender)
+              </label>
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+              >
+                <option value="ชาย">ชาย</option>
+                <option value="หญิง">หญิง</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                อายุ (age)
+              </label>
+              <input
+                type="number"
+                name="age"
+                placeholder="เช่น 35"
+                value={formData.age}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                อีเมล (email)
+              </label>
+              <input
+                type="email"
+                name="email"
+                placeholder="เช่น soldier@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              />
+            </div>
+          </div>
+
+          {/* แถวที่ 3: Line ID, หมายเหตุ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                Line ID
+              </label>
+              <input
+                type="text"
+                name="line_id"
+                placeholder="เช่น line_id"
+                value={formData.line_id}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
+                หมายเหตุ (notes)
+              </label>
+              <input
+                type="text"
+                name="notes"
+                placeholder="หมายเหตุเพิ่มเติม"
+                value={formData.notes}
                 onChange={handleChange}
                 className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
               />

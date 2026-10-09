@@ -70,8 +70,8 @@ export default function UserProfileSettingsPage() {
       setLastNameTh(personnelData.last_name_th || split.last_name_th || '');
       setNickname(personnelData.nickname || '');
       setPhoneNumber(personnelData.phone_number || '');
-      setEmail(custom.email || '');
-      setLineId(custom.line_id || '');
+      setEmail(personnelData.email || custom.email || '');
+      setLineId(personnelData.line_id || custom.line_id || '');
       setRankEn(personnelData.rank_en || '');
       setFirstNameEn(personnelData.first_name_en || '');
       setLastNameEn(personnelData.last_name_en || '');
@@ -114,10 +114,13 @@ export default function UserProfileSettingsPage() {
         full_name_th: combinedFullName,
         nickname: nickname.trim(),
         phone_number: phoneNumber.trim(),
+        email: email.trim() || null,
+        line_id: lineId.trim() || null,
         rank_en: rankEn.trim().toUpperCase(),
         first_name_en: firstNameEn.trim(),
         last_name_en: lastNameEn.trim(),
         custom_fields: {
+          ...(personnelData?.custom_fields || {}),
           email: email.trim() || null,
           line_id: lineId.trim() || null,
         },
@@ -350,7 +353,7 @@ export default function UserProfileSettingsPage() {
               ช่องทางติดต่อ
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-slate-700 font-bold mb-1 text-xs sm:text-sm">
                   เบอร์โทรศัพท์
@@ -369,22 +372,6 @@ export default function UserProfileSettingsPage() {
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1 text-xs sm:text-sm">
-                  อีเมล (Email)
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="เช่น soldier@example.com"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1 text-xs sm:text-sm">
                   Line ID
                 </label>
                 <div className="relative">
@@ -395,6 +382,22 @@ export default function UserProfileSettingsPage() {
                     onChange={(e) => setLineId(e.target.value)}
                     placeholder="เช่น line_id"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-slate-700 font-bold mb-1 text-xs sm:text-sm">
+                  อีเมล (Email)
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="เช่น soldier@example.com"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
                   />
                 </div>
               </div>

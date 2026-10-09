@@ -25,6 +25,17 @@ export interface Personnel {
   birth_date?: string | null;
   passport_no?: string | null;
   photo_url?: string | null;
+  // Separated fields from custom_fields:
+  gender?: string | null;
+  age?: number | string | null;
+  email?: string | null;
+  line_id?: string | null;
+  notes?: string | null;
+  affiliation?: string | null;
+  commander?: string | null;
+  rank_date?: string | null;
+  personnel_category?: string | null;
+  reserve_code?: string | null;
   custom_fields?: Record<string, any>;
   created_at?: string;
   updated_at?: string;

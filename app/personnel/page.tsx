@@ -155,17 +155,13 @@ export default function PersonnelDirectoryPage() {
       return;
     }
 
-    // 1. Sheet 1: Exact Supabase Table Columns (Excluding created_at & updated_at)
+    // 1. Sheet 1: Exact Supabase Table Columns (Separated individual columns)
     const supabaseRows = filteredList.map((p) => {
       const split = splitFullNameTh(p.full_name_th || '');
       const rank_th = p.rank_th || split.rank_th || '';
       const first_name_th = p.first_name_th || split.first_name_th || '';
       const last_name_th = p.last_name_th || split.last_name_th || '';
       const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th) || '';
-
-      const customStr = p.custom_fields && typeof p.custom_fields === 'object' && Object.keys(p.custom_fields).length > 0
-        ? JSON.stringify(p.custom_fields)
-        : '{}';
 
       return {
         id: p.id || '',
@@ -192,21 +188,26 @@ export default function PersonnelDirectoryPage() {
         birth_date: p.birth_date || '',
         passport_no: p.passport_no || '',
         photo_url: p.photo_url || '',
-        custom_fields: customStr,
+        gender: p.gender || p.custom_fields?.gender || '',
+        age: p.age !== undefined && p.age !== null ? p.age : (p.custom_fields?.age ?? ''),
+        email: p.email || p.custom_fields?.email || '',
+        line_id: p.line_id || p.custom_fields?.line_id || '',
+        affiliation: p.affiliation || p.custom_fields?.affiliation || '',
+        commander: p.commander || p.custom_fields?.commander || '',
+        rank_date: p.rank_date || p.custom_fields?.rank_date || '',
+        personnel_category: p.personnel_category || p.custom_fields?.personnel_category || '',
+        reserve_code: p.reserve_code || p.custom_fields?.reserve_code || '',
+        notes: p.notes || p.custom_fields?.notes || '',
       };
     });
 
-    // 2. Sheet 2: Thai Report Format with every single field labeled in Thai
+    // 2. Sheet 2: Thai Report Format with every single field separated and labeled in Thai
     const thaiReportRows = filteredList.map((p) => {
       const split = splitFullNameTh(p.full_name_th || '');
       const rank_th = p.rank_th || split.rank_th || '';
       const first_name_th = p.first_name_th || split.first_name_th || '';
       const last_name_th = p.last_name_th || split.last_name_th || '';
       const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th) || '';
-
-      const customStr = p.custom_fields && typeof p.custom_fields === 'object' && Object.keys(p.custom_fields).length > 0
-        ? JSON.stringify(p.custom_fields)
-        : '{}';
 
       return {
         'ลำดับ (No)': p.seq_no ?? '',
@@ -226,13 +227,22 @@ export default function PersonnelDirectoryPage() {
         'ตำแหน่งปกติ': p.regular_position || '',
         'ตำแหน่งในสนาม': p.field_position || '',
         'สังกัดเหล่าทัพ (ทบ./ทท./ทร.)': p.duty_status || '',
+        'สังกัดเดิม': p.affiliation || p.custom_fields?.affiliation || '',
+        'ผู้บังคับบัญชา': p.commander || p.custom_fields?.commander || '',
+        'ประเภทกำลังพล': p.personnel_category || p.custom_fields?.personnel_category || '',
+        'ยศปัจจุบันเมื่อ': p.rank_date || p.custom_fields?.rank_date || '',
         'ขั้นเงินเดือน': p.salary_step || '',
         'กลุ่มเลือด': p.blood_group || '',
         'เบอร์ติดต่อ': p.phone_number || '',
+        'อีเมล': p.email || p.custom_fields?.email || '',
+        'Line ID': p.line_id || p.custom_fields?.line_id || '',
+        'เพศ': p.gender || p.custom_fields?.gender || '',
+        'อายุ': p.age !== undefined && p.age !== null ? p.age : (p.custom_fields?.age ?? ''),
         'ศาสนา': p.religion || '',
         'วัน เดือน ปี เกิด': p.birth_date || '',
+        'รหัสกำลังพลสำรอง': p.reserve_code || p.custom_fields?.reserve_code || '',
+        'หมายเหตุ': p.notes || p.custom_fields?.notes || '',
         'ลิงก์รูปถ่าย': p.photo_url || '',
-        'ข้อมูลเสริม (JSON)': customStr,
         'รหัสประจำตัว (UUID)': p.id || '',
       };
     });
