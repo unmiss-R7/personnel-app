@@ -29,6 +29,10 @@ export default function Navbar() {
     setSupabaseConnected(isSupabaseConfigured());
   }, []);
 
+  if (pathname === '/login') {
+    return null;
+  }
+
   // 1. Navigation links for regular User (3 main items)
   const userNavLinks = [
     { href: '/', label: 'หน้าหลัก (Dashboard)', icon: LayoutDashboard },

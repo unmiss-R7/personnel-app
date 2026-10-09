@@ -187,27 +187,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
 
-          // 4. Fallback to live commander or first live record if all else failed
-          if (!matched) {
-            matched = commander;
-          }
-
           if (matched) {
             const syncedUser = buildAuthUser(matched, parsedUser.role || 'user');
             setUser(syncedUser);
             setPersonnelData(matched);
             localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(syncedUser));
           } else {
-            setUser(parsedUser);
+            // Stored session was invalid or deleted from database -> clear and require login
+            setUser(null);
+            setPersonnelData(null);
+            localStorage.removeItem(LOCAL_STORAGE_SESSION_KEY);
           }
         } else {
-          // Case C: No session exists yet -> Default to Commander (seq_no 1) from live Supabase
-          if (commander) {
-            const defaultUser = buildAuthUser(commander, 'user');
-            setUser(defaultUser);
-            setPersonnelData(commander);
-            localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(defaultUser));
-          }
+          // Case C: No session exists in localStorage (never logged in or logged out) -> DO NOT auto-login!
+          setUser(null);
+          setPersonnelData(null);
         }
       } catch (err) {
         console.error('Session init error:', err);
