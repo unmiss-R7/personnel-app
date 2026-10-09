@@ -281,22 +281,57 @@ export const personnelService = {
 
   // 2. ดึงข้อมูลกำลังพลรายบุคคลตาม ID
   async getById(id: string): Promise<Personnel | null> {
-    if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('personnel')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
+    if (!id || typeof id !== 'string') return null;
+    const cleanId = id.trim();
+    if (!cleanId) return null;
 
-      if (error) {
-        console.error('Supabase getById failed:', error);
-        throw new Error(`ไม่สามารถดึงข้อมูลจาก Supabase: ${error.message}`);
+    if (isSupabaseConfigured()) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+      if (isUUID) {
+        try {
+          const { data, error } = await supabase
+            .from('personnel')
+            .select('*')
+            .eq('id', cleanId)
+            .maybeSingle();
+
+          if (error) {
+            console.warn('Supabase getById query error:', error.message);
+            return null;
+          }
+          return data ? mapFromSupabase(data) : null;
+        } catch (e) {
+          console.warn('Supabase getById exception:', e);
+          return null;
+        }
+      } else {
+        // Fallback for non-UUID id: look up by citizen_id, military_id, or service_code
+        try {
+          const cleanDigitsOnly = cleanId.replace(/[^0-9]/g, '');
+          const orFilter = cleanDigitsOnly
+            ? `citizen_id.eq.${cleanDigitsOnly},military_id.eq.${cleanDigitsOnly},service_code.eq.${cleanId}`
+            : `service_code.eq.${cleanId}`;
+
+          const { data, error } = await supabase
+            .from('personnel')
+            .select('*')
+            .or(orFilter)
+            .maybeSingle();
+
+          if (error) {
+            console.warn('Supabase getById fallback query error:', error.message);
+            return null;
+          }
+          return data ? mapFromSupabase(data) : null;
+        } catch {
+          return null;
+        }
       }
-      return data ? mapFromSupabase(data) : null;
     }
 
     const locals = getLocalPersonnel();
-    return locals.find((p) => p.id === id) || null;
+    return locals.find((p) => p.id === cleanId) || null;
   },
 
   // 3. เพิ่มข้อมูลกำลังพลใหม่
@@ -371,6 +406,13 @@ export const personnelService = {
     };
 
     if (isSupabaseConfigured()) {
+      let targetId = id;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      if (!isUUID) {
+        const found = await personnelService.getById(targetId);
+        if (found) targetId = found.id;
+      }
+
       const payload = prepareSupabasePayload(updatedData, true);
       delete payload.id;
       delete payload.created_at;
@@ -379,7 +421,7 @@ export const personnelService = {
       const { data, error } = await supabase
         .from('personnel')
         .update(payload)
-        .eq('id', id)
+        .eq('id', targetId)
         .select()
         .single();
 
@@ -403,7 +445,14 @@ export const personnelService = {
   // 5. ลบข้อมูลกำลังพล
   async delete(id: string): Promise<boolean> {
     if (isSupabaseConfigured()) {
-      const { error } = await supabase.from('personnel').delete().eq('id', id);
+      let targetId = id;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+      if (!isUUID) {
+        const found = await personnelService.getById(targetId);
+        if (found) targetId = found.id;
+      }
+
+      const { error } = await supabase.from('personnel').delete().eq('id', targetId);
       if (error) {
         console.error('Supabase delete error:', error);
         throw new Error(`ลบข้อมูลใน Supabase ไม่สำเร็จ: ${error.message}`);

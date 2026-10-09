@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { personnelService } from '@/lib/personnelService';
-import { Personnel } from '@/types/personnel';
+import { Personnel, splitFullNameTh } from '@/types/personnel';
 
 export type UserRole = 'admin' | 'user';
 
@@ -41,6 +41,8 @@ interface AuthContextType {
   updateSelfProfile: (fields: Partial<Personnel>) => Promise<boolean>;
   logout: () => void;
   refreshUserData: () => Promise<void>;
+  switchActivePersonnel: (personnel: Personnel) => void;
+  toggleRole: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,45 +80,132 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [personnelData, setPersonnelData] = useState<Personnel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load session from localStorage on startup
+  // Helper to build AuthUser from Personnel
+  const buildAuthUser = (p: Personnel, role: UserRole = 'user'): AuthUser => {
+    const split = splitFullNameTh(p.full_name_th || '');
+    return {
+      id: p.id,
+      citizen_id: p.citizen_id || '',
+      military_id: p.military_id || '',
+      displayName: p.full_name_th,
+      role,
+      department: p.department || 'กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน (Unmiss R7)',
+      rank_th: p.rank_th || split.rank_th || '',
+      first_name_th: p.first_name_th || split.first_name_th || '',
+      last_name_th: p.last_name_th || split.last_name_th || '',
+      rank_en: p.rank_en || '',
+      first_name_en: p.first_name_en || '',
+      last_name_en: p.last_name_en || '',
+      nickname: p.nickname || '',
+      phone_number: p.phone_number || '',
+      photo_url: p.photo_url || '',
+      mustChangePassword: false,
+    };
+  };
+
+  // Load session from localStorage on startup and auto-sync with live Supabase
   useEffect(() => {
     async function initSession() {
       try {
         const storedSession = localStorage.getItem(LOCAL_STORAGE_SESSION_KEY);
+        let parsedUser: AuthUser | null = null;
         if (storedSession) {
-          const parsedUser: AuthUser = JSON.parse(storedSession);
-          setUser(parsedUser);
-
-          // If linked to a personnel ID, load latest personnel details
-          if (parsedUser.id && parsedUser.id !== 'admin-root') {
-            const p = await personnelService.getById(parsedUser.id);
-            if (p) setPersonnelData(p);
+          try {
+            parsedUser = JSON.parse(storedSession);
+          } catch {
+            parsedUser = null;
           }
-        } else {
-          // If no session, create a default user session linked to first personnel
-          const all = await personnelService.getAll();
-          if (all.length > 0) {
-            const defaultPersonnel = all.find((p) => p.seq_no === 2) || all[0];
-            const defaultUser: AuthUser = {
-              id: defaultPersonnel.id,
-              citizen_id: defaultPersonnel.citizen_id || '',
-              military_id: defaultPersonnel.military_id || '',
-              displayName: defaultPersonnel.full_name_th,
-              role: 'user',
-              department: defaultPersonnel.department || '',
-              rank_th: defaultPersonnel.rank_th || '',
-              first_name_th: defaultPersonnel.first_name_th || '',
-              last_name_th: defaultPersonnel.last_name_th || '',
-              rank_en: defaultPersonnel.rank_en || '',
-              first_name_en: defaultPersonnel.first_name_en || '',
-              last_name_en: defaultPersonnel.last_name_en || '',
-              nickname: defaultPersonnel.nickname || '',
-              phone_number: defaultPersonnel.phone_number || '',
-              photo_url: defaultPersonnel.photo_url || '',
+        }
+
+        // 1. Fetch live personnel list from Supabase
+        let allPersonnel: Personnel[] = [];
+        try {
+          allPersonnel = await personnelService.getAll();
+        } catch (e) {
+          console.error('Failed to load personnel list for session init:', e);
+        }
+
+        const commander = allPersonnel.find((p) => p.seq_no === 1) || allPersonnel[0] || null;
+
+        if (parsedUser) {
+          // Case A: Administrator Session
+          if (parsedUser.role === 'admin' || parsedUser.id === 'admin-root') {
+            let matchedPersonnel: Personnel | null = null;
+            if (parsedUser.id && parsedUser.id !== 'admin-root') {
+              matchedPersonnel = allPersonnel.find((p) => p.id === parsedUser.id) || null;
+            }
+            if (!matchedPersonnel) {
+              matchedPersonnel = commander;
+            }
+
+            const adminUser: AuthUser = {
+              id: matchedPersonnel ? matchedPersonnel.id : 'admin-root',
+              citizen_id: matchedPersonnel?.citizen_id || parsedUser.citizen_id || '0-0000-00000-00-0',
+              military_id: matchedPersonnel?.military_id || parsedUser.military_id || '',
+              displayName: parsedUser.displayName || matchedPersonnel?.full_name_th || 'ผู้ดูแลระบบส่วนกลาง (Admin)',
+              role: 'admin',
+              department: matchedPersonnel?.department || 'กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน (Unmiss R7)',
+              rank_th: matchedPersonnel?.rank_th || parsedUser.rank_th || '',
+              first_name_th: matchedPersonnel?.first_name_th || parsedUser.first_name_th || '',
+              last_name_th: matchedPersonnel?.last_name_th || parsedUser.last_name_th || '',
+              rank_en: matchedPersonnel?.rank_en || parsedUser.rank_en || '',
+              first_name_en: matchedPersonnel?.first_name_en || parsedUser.first_name_en || '',
+              last_name_en: matchedPersonnel?.last_name_en || parsedUser.last_name_en || '',
+              nickname: matchedPersonnel?.nickname || parsedUser.nickname || '',
+              phone_number: matchedPersonnel?.phone_number || parsedUser.phone_number || '',
+              photo_url: matchedPersonnel?.photo_url || parsedUser.photo_url || '',
               mustChangePassword: false,
             };
+
+            setUser(adminUser);
+            setPersonnelData(matchedPersonnel);
+            localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(adminUser));
+            return;
+          }
+
+          // Case B: Regular User Session - Auto-heal stale mock IDs to live Supabase UUIDs
+          let matched: Personnel | null = null;
+
+          // 1. Try finding by ID
+          if (parsedUser.id) {
+            matched = allPersonnel.find((p) => p.id === parsedUser.id) || null;
+          }
+
+          // 2. If ID was mock (e.g. 'personnel-002'), try finding by clean citizen_id
+          if (!matched && parsedUser.citizen_id) {
+            const cleanCit = cleanDigits(parsedUser.citizen_id);
+            if (cleanCit) {
+              matched = allPersonnel.find((p) => cleanDigits(p.citizen_id) === cleanCit) || null;
+            }
+          }
+
+          // 3. Try finding by clean military_id
+          if (!matched && parsedUser.military_id) {
+            const cleanMil = cleanDigits(parsedUser.military_id);
+            if (cleanMil) {
+              matched = allPersonnel.find((p) => cleanDigits(p.military_id) === cleanMil) || null;
+            }
+          }
+
+          // 4. Fallback to live commander or first live record if all else failed
+          if (!matched) {
+            matched = commander;
+          }
+
+          if (matched) {
+            const syncedUser = buildAuthUser(matched, parsedUser.role || 'user');
+            setUser(syncedUser);
+            setPersonnelData(matched);
+            localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(syncedUser));
+          } else {
+            setUser(parsedUser);
+          }
+        } else {
+          // Case C: No session exists yet -> Default to Commander (seq_no 1) from live Supabase
+          if (commander) {
+            const defaultUser = buildAuthUser(commander, 'user');
             setUser(defaultUser);
-            setPersonnelData(defaultPersonnel);
+            setPersonnelData(commander);
             localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(defaultUser));
           }
         }
@@ -136,18 +225,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Case A: Administrator special login
     if (rawInput.toLowerCase() === 'admin' && password === 'admin123') {
-      const adminUser: AuthUser = {
-        id: 'admin-root',
-        citizen_id: '0-0000-00000-00-0',
-        displayName: 'ผู้ดูแลระบบส่วนกลาง (Admin)',
-        role: 'admin',
-        department: 'กองบังคับการกองพลทหารช่าง',
-        mustChangePassword: false,
-      };
-      setUser(adminUser);
-      setPersonnelData(null);
-      localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(adminUser));
-      return { success: true };
+      try {
+        const allPersonnel = await personnelService.getAll();
+        const commander = allPersonnel.find((p) => p.seq_no === 1) || allPersonnel[0] || null;
+
+        const adminUser: AuthUser = {
+          id: commander ? commander.id : 'admin-root',
+          citizen_id: commander?.citizen_id || '0-0000-00000-00-0',
+          military_id: commander?.military_id || '',
+          displayName: 'ผู้ดูแลระบบส่วนกลาง (Admin)',
+          role: 'admin',
+          department: commander?.department || 'กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน (Unmiss R7)',
+          rank_th: commander?.rank_th || '',
+          first_name_th: commander?.first_name_th || 'ผู้ดูแลระบบ',
+          last_name_th: commander?.last_name_th || 'ส่วนกลาง',
+          rank_en: commander?.rank_en || '',
+          first_name_en: commander?.first_name_en || 'ADMIN',
+          last_name_en: commander?.last_name_en || 'ROOT',
+          nickname: commander?.nickname || '',
+          phone_number: commander?.phone_number || '',
+          photo_url: commander?.photo_url || '',
+          mustChangePassword: false,
+        };
+
+        setUser(adminUser);
+        setPersonnelData(commander);
+        localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(adminUser));
+        return { success: true };
+      } catch {
+        const adminUser: AuthUser = {
+          id: 'admin-root',
+          citizen_id: '0-0000-00000-00-0',
+          displayName: 'ผู้ดูแลระบบส่วนกลาง (Admin)',
+          role: 'admin',
+          department: 'กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน (Unmiss R7)',
+          mustChangePassword: false,
+        };
+        setUser(adminUser);
+        setPersonnelData(null);
+        localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(adminUser));
+        return { success: true };
+      }
     }
 
     // Case B: Login by citizen_id (เลขประจำตัวประชาชน 13 หลัก)
@@ -175,24 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check if password has been set previously
       if (customPassword) {
         if (password === customPassword) {
-          const authUser: AuthUser = {
-            id: matched.id,
-            citizen_id: matched.citizen_id || cleanInput,
-            military_id: matched.military_id || '',
-            displayName: matched.full_name_th,
-            role: 'user',
-            department: matched.department || '',
-            rank_th: matched.rank_th || '',
-            first_name_th: matched.first_name_th || '',
-            last_name_th: matched.last_name_th || '',
-            rank_en: matched.rank_en || '',
-            first_name_en: matched.first_name_en || '',
-            last_name_en: matched.last_name_en || '',
-            nickname: matched.nickname || '',
-            phone_number: matched.phone_number || '',
-            photo_url: matched.photo_url || '',
-            mustChangePassword: false,
-          };
+          const authUser = buildAuthUser(matched, 'user');
           setUser(authUser);
           setPersonnelData(matched);
           localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(authUser));
@@ -209,24 +310,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const inputPassDigits = cleanDigits(password);
 
         if (inputPassDigits === cleanMilitaryId || password === matched.military_id) {
-          const authUser: AuthUser = {
-            id: matched.id,
-            citizen_id: matched.citizen_id || cleanInput,
-            military_id: matched.military_id || '',
-            displayName: matched.full_name_th,
-            role: 'user',
-            department: matched.department || '',
-            rank_th: matched.rank_th || '',
-            first_name_th: matched.first_name_th || '',
-            last_name_th: matched.last_name_th || '',
-            rank_en: matched.rank_en || '',
-            first_name_en: matched.first_name_en || '',
-            last_name_en: matched.last_name_en || '',
-            nickname: matched.nickname || '',
-            phone_number: matched.phone_number || '',
-            photo_url: matched.photo_url || '',
-            mustChangePassword: true, // Must change password immediately!
-          };
+          const authUser = buildAuthUser(matched, 'user');
+          authUser.mustChangePassword = true;
           setUser(authUser);
           setPersonnelData(matched);
           localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(authUser));
@@ -270,11 +355,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 3. User can edit: ยศ, ชื่อ, นามสกุล, ชื่อเล่น, หมายเลขโทรศัพท์
+  // 3. User & Admin profile updater directly to live Supabase database
   const updateSelfProfile = async (fields: Partial<Personnel>): Promise<boolean> => {
-    if (!user || !user.id || user.id === 'admin-root') return false;
+    const targetId = personnelData?.id || (user?.id && user.id !== 'admin-root' ? user.id : null);
+    if (!targetId) {
+      // If pure admin-root with no linked personnel, update local admin session
+      if (user) {
+        const updatedUser: AuthUser = {
+          ...user,
+          displayName: fields.full_name_th || user.displayName,
+          rank_th: (fields.rank_th !== undefined && fields.rank_th !== null) ? fields.rank_th : user.rank_th,
+          first_name_th: (fields.first_name_th !== undefined && fields.first_name_th !== null) ? fields.first_name_th : user.first_name_th,
+          last_name_th: (fields.last_name_th !== undefined && fields.last_name_th !== null) ? fields.last_name_th : user.last_name_th,
+          nickname: (fields.nickname !== undefined && fields.nickname !== null) ? fields.nickname : user.nickname,
+          phone_number: (fields.phone_number !== undefined && fields.phone_number !== null) ? fields.phone_number : user.phone_number,
+          rank_en: (fields.rank_en !== undefined && fields.rank_en !== null) ? fields.rank_en : user.rank_en,
+          first_name_en: (fields.first_name_en !== undefined && fields.first_name_en !== null) ? fields.first_name_en : user.first_name_en,
+          last_name_en: (fields.last_name_en !== undefined && fields.last_name_en !== null) ? fields.last_name_en : user.last_name_en,
+        };
+        setUser(updatedUser);
+        localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
+        return true;
+      }
+      return false;
+    }
 
-    // Filter strictly to allowed fields only
     const safeData: Partial<Personnel> = {};
     if (fields.rank_th !== undefined) safeData.rank_th = fields.rank_th;
     if (fields.first_name_th !== undefined) safeData.first_name_th = fields.first_name_th;
@@ -285,14 +390,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (fields.rank_en !== undefined) safeData.rank_en = fields.rank_en;
     if (fields.first_name_en !== undefined) safeData.first_name_en = fields.first_name_en;
     if (fields.last_name_en !== undefined) safeData.last_name_en = fields.last_name_en;
+    if (fields.photo_url !== undefined) safeData.photo_url = fields.photo_url;
+
+    // Admin-editable official fields
+    if (isAdmin) {
+      if (fields.department !== undefined) safeData.department = fields.department;
+      if (fields.regular_position !== undefined) safeData.regular_position = fields.regular_position;
+      if (fields.field_position !== undefined) safeData.field_position = fields.field_position;
+      if (fields.duty_status !== undefined) safeData.duty_status = fields.duty_status;
+      if (fields.blood_group !== undefined) safeData.blood_group = fields.blood_group;
+      if (fields.religion !== undefined) safeData.religion = fields.religion;
+      if (fields.birth_date !== undefined) safeData.birth_date = fields.birth_date;
+      if (fields.passport_no !== undefined) safeData.passport_no = fields.passport_no;
+      if (fields.salary_step !== undefined) safeData.salary_step = fields.salary_step;
+    }
+
+    if (fields.custom_fields !== undefined) {
+      safeData.custom_fields = {
+        ...(personnelData?.custom_fields || {}),
+        ...fields.custom_fields,
+      };
+    }
 
     try {
-      const updated = await personnelService.update(user.id, safeData);
+      const updated = await personnelService.update(targetId, safeData);
       setPersonnelData(updated);
 
       const updatedUser: AuthUser = {
-        ...user,
+        ...(user || {}),
+        id: updated.id,
         displayName: updated.full_name_th,
+        role: user?.role || 'user',
+        department: updated.department || user?.department || '',
         rank_th: updated.rank_th || '',
         first_name_th: updated.first_name_th || '',
         last_name_th: updated.last_name_th || '',
@@ -301,7 +430,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rank_en: updated.rank_en || '',
         first_name_en: updated.first_name_en || '',
         last_name_en: updated.last_name_en || '',
-      };
+        photo_url: updated.photo_url || user?.photo_url || '',
+      } as AuthUser;
+
       setUser(updatedUser);
       localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
       return true;
@@ -313,9 +444,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 4. Refresh current user data from database
   const refreshUserData = async () => {
-    if (!user || !user.id || user.id === 'admin-root') return;
+    const targetId = personnelData?.id || (user?.id && user.id !== 'admin-root' ? user.id : null);
+    if (!targetId) return;
     try {
-      const p = await personnelService.getById(user.id);
+      const p = await personnelService.getById(targetId);
       if (p) {
         setPersonnelData(p);
         setUser((prev) =>
@@ -323,6 +455,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? {
                 ...prev,
                 displayName: p.full_name_th,
+                department: p.department || prev.department,
                 rank_th: p.rank_th || '',
                 first_name_th: p.first_name_th || '',
                 last_name_th: p.last_name_th || '',
@@ -331,6 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 rank_en: p.rank_en || '',
                 first_name_en: p.first_name_en || '',
                 last_name_en: p.last_name_en || '',
+                photo_url: p.photo_url || prev.photo_url || '',
               }
             : null
         );
@@ -340,7 +474,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 5. Logout
+  // 5. Switch active personnel account from live Supabase list
+  const switchActivePersonnel = (personnel: Personnel) => {
+    const currentRole = user?.role || 'user';
+    const newAuthUser = buildAuthUser(personnel, currentRole);
+    setUser(newAuthUser);
+    setPersonnelData(personnel);
+    localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(newAuthUser));
+  };
+
+  // 6. Quick toggle between Admin & Regular User
+  const toggleRole = () => {
+    if (!user) return;
+    const newRole: UserRole = user.role === 'admin' ? 'user' : 'admin';
+    const updatedUser: AuthUser = {
+      ...user,
+      role: newRole,
+    };
+    setUser(updatedUser);
+    localStorage.setItem(LOCAL_STORAGE_SESSION_KEY, JSON.stringify(updatedUser));
+  };
+
+  // 7. Logout
   const logout = () => {
     setUser(null);
     setPersonnelData(null);
@@ -361,6 +516,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateSelfProfile,
         logout,
         refreshUserData,
+        switchActivePersonnel,
+        toggleRole,
       }}
     >
       {children}
