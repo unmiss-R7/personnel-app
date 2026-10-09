@@ -176,9 +176,6 @@ export default function DashboardPage() {
                   <h2 className="text-base sm:text-lg font-black text-slate-900">
                     สังกัด (ทบ. / ทท. / ทร.)
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    จำแนกตามฟิลด์ duty_status
-                  </p>
                 </div>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
@@ -187,26 +184,34 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-3.5">
-              {dutyStats.map((item) => (
-                <div key={item.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm sm:text-base">
-                    <span className="font-bold text-slate-800 flex items-center space-x-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.bg}`} />
-                      <span>{item.name === 'ทบ.' ? 'กองทัพบก (ทบ.)' : item.name === 'ทท.' ? 'กองบัญชาการกองทัพไทย (ทท.)' : item.name === 'ทร.' ? 'กองทัพเรือ (ทร.)' : item.name}</span>
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
-                      <span className="font-black text-slate-900">{item.count} นาย</span>
+              {dutyStats.map((item) => {
+                const hexColor = item.hex || (
+                  item.name === 'ทบ.' ? '#10b981' :
+                  item.name === 'ทท.' ? '#a855f7' :
+                  item.name === 'ทร.' ? '#3b82f6' : '#64748b'
+                );
+                const barWidth = Math.max(item.percentage, item.count > 0 ? 5 : 0);
+                return (
+                  <div key={item.name} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm sm:text-base">
+                      <span className="font-bold text-slate-800 flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hexColor }} />
+                        <span>{item.name === 'ทบ.' ? 'กองทัพบก (ทบ.)' : item.name === 'ทท.' ? 'กองบัญชาการกองทัพไทย (ทท.)' : item.name === 'ทร.' ? 'กองทัพเรือ (ทร.)' : item.name}</span>
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
+                        <span className="font-black text-slate-900">{item.count} นาย</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%`, backgroundColor: hexColor }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.bg} transition-all duration-500`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -216,7 +221,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Card 2: จำนวนเพศ */}
+        {/* Card 2: จำนวนตามเพศ */}
         <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -228,9 +233,6 @@ export default function DashboardPage() {
                   <h2 className="text-base sm:text-lg font-black text-slate-900">
                     จำนวนตามเพศ
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Personnel by Gender
-                  </p>
                 </div>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-700 rounded-xl border border-rose-200">
@@ -239,26 +241,33 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-3.5">
-              {genderStats.map((item) => (
-                <div key={item.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm sm:text-base">
-                    <span className="font-bold text-slate-800 flex items-center space-x-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.bg}`} />
-                      <span>{item.name === 'ไม่ระบุ' ? 'ไม่ระบุเพศ' : `เพศ${item.name}`}</span>
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
-                      <span className="font-black text-slate-900">{item.count} นาย</span>
+              {genderStats.map((item) => {
+                const hexColor = item.hex || (
+                  item.name === 'ชาย' ? '#3b82f6' :
+                  item.name === 'หญิง' ? '#f43f5e' : '#94a3b8'
+                );
+                const barWidth = Math.max(item.percentage, item.count > 0 ? 5 : 0);
+                return (
+                  <div key={item.name} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm sm:text-base">
+                      <span className="font-bold text-slate-800 flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hexColor }} />
+                        <span>{item.name === 'ไม่ระบุ' ? 'ไม่ระบุเพศ' : `เพศ${item.name}`}</span>
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
+                        <span className="font-black text-slate-900">{item.count} นาย</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%`, backgroundColor: hexColor }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.bg} transition-all duration-500`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -268,7 +277,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Card 3: จำนวนศาสนา */}
+        {/* Card 3: จำนวนตามศาสนา */}
         <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -280,9 +289,6 @@ export default function DashboardPage() {
                   <h2 className="text-base sm:text-lg font-black text-slate-900">
                     จำนวนตามศาสนา
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Personnel by Religion
-                  </p>
                 </div>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-xl border border-amber-200">
@@ -291,26 +297,34 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-3.5">
-              {religionStats.map((item) => (
-                <div key={item.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm sm:text-base">
-                    <span className="font-bold text-slate-800 flex items-center space-x-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.bg}`} />
-                      <span>{item.name === 'ไม่ระบุ' ? 'ไม่ระบุศาสนา' : `ศาสนา${item.name}`}</span>
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
-                      <span className="font-black text-slate-900">{item.count} นาย</span>
+              {religionStats.map((item) => {
+                const hexColor = item.hex || (
+                  item.name === 'พุทธ' ? '#f59e0b' :
+                  item.name === 'อิสลาม' ? '#10b981' :
+                  item.name === 'คริสต์' ? '#6366f1' : '#94a3b8'
+                );
+                const barWidth = Math.max(item.percentage, item.count > 0 ? 5 : 0);
+                return (
+                  <div key={item.name} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm sm:text-base">
+                      <span className="font-bold text-slate-800 flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hexColor }} />
+                        <span>{item.name === 'ไม่ระบุ' ? 'ไม่ระบุศาสนา' : `ศาสนา${item.name}`}</span>
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-slate-500 text-xs">({item.percentage}%)</span>
+                        <span className="font-black text-slate-900">{item.count} นาย</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%`, backgroundColor: hexColor }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.bg} transition-all duration-500`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

@@ -100,6 +100,7 @@ export interface DutyStatusStat {
   percentage: number;
   color: string;
   bg: string;
+  hex?: string;
 }
 
 export interface GenderStat {
@@ -108,6 +109,7 @@ export interface GenderStat {
   percentage: number;
   color: string;
   bg: string;
+  hex?: string;
 }
 
 export interface ReligionStat {
@@ -116,6 +118,7 @@ export interface ReligionStat {
   percentage: number;
   color: string;
   bg: string;
+  hex?: string;
 }
 
 export interface DepartmentStat {

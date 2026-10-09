@@ -627,21 +627,22 @@ export const personnelService = {
       }
     });
 
-    const meta: Record<string, { color: string; bg: string }> = {
-      'ทบ.': { color: 'text-emerald-700 bg-emerald-50 border-emerald-300', bg: 'bg-emerald-500' },
-      'ทท.': { color: 'text-purple-700 bg-purple-50 border-purple-300', bg: 'bg-purple-500' },
-      'ทร.': { color: 'text-blue-700 bg-blue-50 border-blue-300', bg: 'bg-blue-500' },
+    const meta: Record<string, { color: string; bg: string; hex: string }> = {
+      'ทบ.': { color: 'text-emerald-700 bg-emerald-50 border-emerald-300', bg: 'bg-emerald-500', hex: '#10b981' },
+      'ทท.': { color: 'text-purple-700 bg-purple-50 border-purple-300', bg: 'bg-purple-500', hex: '#a855f7' },
+      'ทร.': { color: 'text-blue-700 bg-blue-50 border-blue-300', bg: 'bg-blue-500', hex: '#3b82f6' },
     };
 
     return Object.entries(counts).map(([name, count]) => {
       const percentage = Math.round((count / total) * 100);
-      const m = meta[name] || { color: 'text-slate-700 bg-slate-50 border-slate-300', bg: 'bg-slate-500' };
+      const m = meta[name] || { color: 'text-slate-700 bg-slate-50 border-slate-300', bg: 'bg-slate-500', hex: '#64748b' };
       return {
         name,
         count,
         percentage,
         color: m.color,
         bg: m.bg,
+        hex: m.hex,
       };
     });
   },
@@ -663,10 +664,10 @@ export const personnelService = {
       counts['ไม่ระบุ'] = unspec;
     }
 
-    const meta: Record<string, { color: string; bg: string }> = {
-      'ชาย': { color: 'text-blue-700 bg-blue-50 border-blue-300', bg: 'bg-blue-500' },
-      'หญิง': { color: 'text-rose-700 bg-rose-50 border-rose-300', bg: 'bg-rose-500' },
-      'ไม่ระบุ': { color: 'text-slate-600 bg-slate-50 border-slate-300', bg: 'bg-slate-400' },
+    const meta: Record<string, { color: string; bg: string; hex: string }> = {
+      'ชาย': { color: 'text-blue-700 bg-blue-50 border-blue-300', bg: 'bg-blue-500', hex: '#3b82f6' },
+      'หญิง': { color: 'text-rose-700 bg-rose-50 border-rose-300', bg: 'bg-rose-500', hex: '#f43f5e' },
+      'ไม่ระบุ': { color: 'text-slate-600 bg-slate-50 border-slate-300', bg: 'bg-slate-400', hex: '#94a3b8' },
     };
 
     return Object.entries(counts).map(([name, count]) => ({
@@ -675,6 +676,7 @@ export const personnelService = {
       percentage: Math.round((count / total) * 100),
       color: meta[name]?.color || 'text-slate-700 bg-slate-50 border-slate-300',
       bg: meta[name]?.bg || 'bg-slate-500',
+      hex: meta[name]?.hex || '#64748b',
     }));
   },
 
@@ -697,11 +699,11 @@ export const personnelService = {
       counts['ไม่ระบุ'] = unspec;
     }
 
-    const meta: Record<string, { color: string; bg: string }> = {
-      'พุทธ': { color: 'text-amber-700 bg-amber-50 border-amber-300', bg: 'bg-amber-500' },
-      'อิสลาม': { color: 'text-emerald-700 bg-emerald-50 border-emerald-300', bg: 'bg-emerald-500' },
-      'คริสต์': { color: 'text-indigo-700 bg-indigo-50 border-indigo-300', bg: 'bg-indigo-500' },
-      'ไม่ระบุ': { color: 'text-slate-600 bg-slate-50 border-slate-300', bg: 'bg-slate-400' },
+    const meta: Record<string, { color: string; bg: string; hex: string }> = {
+      'พุทธ': { color: 'text-amber-700 bg-amber-50 border-amber-300', bg: 'bg-amber-500', hex: '#f59e0b' },
+      'อิสลาม': { color: 'text-emerald-700 bg-emerald-50 border-emerald-300', bg: 'bg-emerald-500', hex: '#10b981' },
+      'คริสต์': { color: 'text-indigo-700 bg-indigo-50 border-indigo-300', bg: 'bg-indigo-500', hex: '#6366f1' },
+      'ไม่ระบุ': { color: 'text-slate-600 bg-slate-50 border-slate-300', bg: 'bg-slate-400', hex: '#94a3b8' },
     };
 
     return Object.entries(counts)
@@ -712,6 +714,7 @@ export const personnelService = {
         percentage: Math.round((count / total) * 100),
         color: meta[name]?.color || 'text-slate-700 bg-slate-50 border-slate-300',
         bg: meta[name]?.bg || 'bg-slate-500',
+        hex: meta[name]?.hex || '#64748b',
       }));
   },
 
