@@ -1,5 +1,5 @@
 // Service Worker for Unmiss R7 Personnel Information System
-const CACHE_NAME = 'unmiss-r7-cache-v8';
+const CACHE_NAME = 'unmiss-r7-cache-v9';
 
 const STATIC_ASSETS = [
   '/',

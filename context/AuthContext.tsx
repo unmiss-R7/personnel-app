@@ -125,6 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Failed to load personnel list for session init:', e);
         }
 
+        // Preload server display fields in background
+        personnelService.fetchDisplayFields().catch(() => {});
+
         const commander = allPersonnel.find((p) => p.seq_no === 1) || allPersonnel[0] || null;
 
         if (parsedUser) {
@@ -281,12 +284,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      const storedPasswords = getStoredPasswords();
-      const customPassword = storedPasswords[cleanInput];
-
       // Check if password has been set previously
-      if (customPassword) {
-        if (password === customPassword) {
+      // Priority 1: Supabase database (matched.custom_fields?.password || (matched as any).password)
+      // Priority 2: Local storage cache (storedPasswords[cleanInput])
+      const dbPassword = matched.custom_fields?.password || (matched as any).password;
+      const storedPasswords = getStoredPasswords();
+      const localPassword = storedPasswords[cleanInput];
+      const effectivePassword = dbPassword || localPassword;
+
+      if (effectivePassword) {
+        if (password === effectivePassword) {
+          // If password was in local storage but not yet in database, sync to database now!
+          if (!dbPassword && localPassword && matched.id) {
+            personnelService.update(matched.id, {
+              custom_fields: { ...(matched.custom_fields || {}), password: localPassword, password_updated_at: new Date().toISOString() }
+            }).catch((e) => console.warn('Auto-sync password to Supabase error:', e));
+          }
+          // Also save in local storage map on this machine
+          if (dbPassword && !localPassword) {
+            storedPasswords[cleanInput] = dbPassword;
+            saveStoredPasswords(storedPasswords);
+          }
+
           const authUser = buildAuthUser(matched, 'user');
           setUser(authUser);
           setPersonnelData(matched);
@@ -326,16 +345,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 2. Change password (required for first-time login or from user settings)
+  // 2. Change password (persists to Supabase database so it works across all devices)
   const changePassword = async (newPassword: string): Promise<boolean> => {
     if (!user || !user.citizen_id) return false;
     const cleanKey = cleanDigits(user.citizen_id);
 
     try {
+      // 1. Save password directly to Supabase database
+      let targetId = personnelData?.id || (user.id !== 'admin-root' ? user.id : null);
+      if (!targetId) {
+        const all = await personnelService.getAll();
+        const found = all.find((p) => cleanDigits(p.citizen_id) === cleanKey);
+        if (found) targetId = found.id;
+      }
+
+      if (targetId) {
+        const latest = await personnelService.getById(targetId);
+        const existingCustom = latest?.custom_fields || personnelData?.custom_fields || {};
+        const updatedCustom = {
+          ...existingCustom,
+          password: newPassword,
+          password_updated_at: new Date().toISOString(),
+        };
+
+        const updated = await personnelService.update(targetId, {
+          custom_fields: updatedCustom,
+        });
+
+        if (updated) {
+          setPersonnelData(updated);
+        }
+      }
+
+      // 2. Also cache in localStorage for fast local lookup
       const stored = getStoredPasswords();
       stored[cleanKey] = newPassword;
       saveStoredPasswords(stored);
 
+      // 3. Update current user state and session
       const updatedUser: AuthUser = {
         ...user,
         mustChangePassword: false,
@@ -400,9 +447,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (fields.custom_fields !== undefined) {
+      const existingCustom = personnelData?.custom_fields || {};
       safeData.custom_fields = {
-        ...(personnelData?.custom_fields || {}),
+        ...existingCustom,
         ...fields.custom_fields,
+        ...(existingCustom.password ? { password: existingCustom.password } : {}),
+        ...(existingCustom.password_updated_at ? { password_updated_at: existingCustom.password_updated_at } : {}),
       };
     }
 

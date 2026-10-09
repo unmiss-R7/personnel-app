@@ -52,7 +52,7 @@ function FieldSettingsComponent() {
     try {
       const [defs, disp] = await Promise.all([
         personnelService.getFieldDefinitions(),
-        Promise.resolve(personnelService.getDisplayFields()),
+        personnelService.fetchDisplayFields(),
       ]);
       setCustomFields(defs);
       setDisplayFields(disp);
@@ -67,27 +67,27 @@ function FieldSettingsComponent() {
     loadData();
   }, []);
 
-  // Toggle single display field
-  const handleToggleField = (key: string) => {
+  // Toggle single display field (Saves to server & local storage)
+  const handleToggleField = async (key: string) => {
     const updated = displayFields.map((f) =>
       f.key === key ? { ...f, visible: !f.visible } : f
     );
     setDisplayFields(updated);
-    personnelService.saveDisplayFields(updated);
+    await personnelService.saveDisplayFields(updated);
     triggerSuccessBanner();
   };
 
-  // Show All Fields
-  const handleShowAll = () => {
+  // Show All Fields (Saves to server & local storage)
+  const handleShowAll = async () => {
     const updated = displayFields.map((f) => ({ ...f, visible: true }));
     setDisplayFields(updated);
-    personnelService.saveDisplayFields(updated);
+    await personnelService.saveDisplayFields(updated);
     triggerSuccessBanner();
   };
 
-  // Reset Default Fields
-  const handleResetDefaults = () => {
-    const defaults = personnelService.resetDisplayFields();
+  // Reset Default Fields (Saves to server & local storage)
+  const handleResetDefaults = async () => {
+    const defaults = await personnelService.resetDisplayFields();
     setDisplayFields(defaults);
     triggerSuccessBanner();
   };
@@ -125,7 +125,7 @@ function FieldSettingsComponent() {
       };
       const updatedDisplay = [...displayFields.filter((f) => f.key !== cleanKey), newDisplay];
       setDisplayFields(updatedDisplay);
-      personnelService.saveDisplayFields(updatedDisplay);
+      await personnelService.saveDisplayFields(updatedDisplay);
 
       setFieldLabel('');
       setFieldKey('');
@@ -243,7 +243,7 @@ function FieldSettingsComponent() {
           {saveSuccessMsg && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm sm:text-base text-emerald-800 flex items-center space-x-2.5 animate-in fade-in duration-150 font-bold">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-              <span>บันทึกการตั้งค่าการ์ดฟิลด์ที่แสดงผลเรียบร้อยแล้ว การเปลี่ยนแปลงจะมีผลในหน้าโปรไฟล์ทันที</span>
+              <span>บันทึกการตั้งค่าลงเซิร์ฟเวอร์เรียบร้อยแล้ว การเปลี่ยนแปลงมีผลกับทุกเครื่องในระบบทันที</span>
             </div>
           )}
 

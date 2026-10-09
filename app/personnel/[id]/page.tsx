@@ -20,7 +20,7 @@ import {
   HeartPulse,
   Mail
 } from 'lucide-react';
-import { personnelService, REMOVED_FIELD_KEYS } from '@/lib/personnelService';
+import { personnelService, REMOVED_FIELD_KEYS, SYSTEM_PRIVATE_FIELD_KEYS } from '@/lib/personnelService';
 import { Personnel, FieldDefinition, DisplayFieldSetting } from '@/types/personnel';
 import { useAuth } from '@/context/AuthContext';
 import QuickActionBar from '@/components/QuickActionBar';
@@ -75,19 +75,24 @@ export default function PersonnelDetailPage() {
       if (!id) return;
       setLoading(true);
       try {
-        const [personnelData, fields] = await Promise.all([
+        const [personnelData, fields, baseDisplay] = await Promise.all([
           personnelService.getById(id),
           personnelService.getFieldDefinitions(),
+          personnelService.fetchDisplayFields(),
         ]);
         setPersonnel(personnelData);
         setFieldDefs(fields);
 
-        const baseDisplay = personnelService.getDisplayFields();
         if (personnelData?.custom_fields) {
           const existingKeys = new Set(baseDisplay.map((f) => f.key));
           const extraFields: DisplayFieldSetting[] = [];
           Object.keys(personnelData.custom_fields).forEach((k) => {
-            if (!existingKeys.has(k) && !REMOVED_FIELD_KEYS.has(k)) {
+            if (
+              !existingKeys.has(k) &&
+              !REMOVED_FIELD_KEYS.has(k) &&
+              !SYSTEM_PRIVATE_FIELD_KEYS.has(k) &&
+              !k.startsWith('__')
+            ) {
               const def = fields.find((f) => f.field_key === k);
               extraFields.push({
                 key: k,

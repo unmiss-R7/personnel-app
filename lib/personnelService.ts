@@ -66,6 +66,16 @@ export const REMOVED_FIELD_KEYS = new Set([
   'last_name_th',
 ]);
 
+export const DISPLAY_SETTINGS_KEY = '__display_fields_config__';
+export const DISPLAY_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+
+export const SYSTEM_PRIVATE_FIELD_KEYS = new Set([
+  'password',
+  'password_hash',
+  'password_updated_at',
+  DISPLAY_SETTINGS_KEY,
+]);
+
 const initialPhotoMap = new Map(INITIAL_PERSONNEL.map((ip) => [ip.id, ip.photo_url]));
 
 const generateUUID = (): string => {
@@ -646,24 +656,36 @@ export const personnelService = {
     return formattedList.length;
   },
 
-  // 8. ดึงรายการ Dynamic Field Definitions
+  // 8. ดึงรายการ Dynamic Field Definitions (ฟิลด์เสริมที่ผู้ใช้สร้างเพิ่ม)
   async getFieldDefinitions(): Promise<FieldDefinition[]> {
+    const defaultKeySet = new Set(DEFAULT_DISPLAY_FIELDS.map((f) => f.key));
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await supabase
           .from('field_definitions')
           .select('*')
-          .eq('is_active', true)
           .order('created_at', { ascending: true });
 
         if (!error && data && data.length > 0) {
-          return data as FieldDefinition[];
+          return (data as FieldDefinition[]).filter(
+            (d) =>
+              d &&
+              !defaultKeySet.has(d.field_key) &&
+              !d.field_key.startsWith('__') &&
+              !SYSTEM_PRIVATE_FIELD_KEYS.has(d.field_key)
+          );
         }
       } catch (err) {
         console.warn('Supabase getFieldDefinitions failed:', err);
       }
     }
-    return getLocalFields();
+    return getLocalFields().filter(
+      (d) =>
+        d &&
+        !defaultKeySet.has(d.field_key) &&
+        !d.field_key.startsWith('__') &&
+        !SYSTEM_PRIVATE_FIELD_KEYS.has(d.field_key)
+    );
   },
 
   // 9. เพิ่ม Custom Field Definition
@@ -931,79 +953,163 @@ export const personnelService = {
     }));
   },
 
-  // 11. ดึงการตั้งค่าการเปิด/ปิด การ์ดฟิลด์ข้อมูลที่แสดงผล
+  // Helper รวมการตั้งค่าฟิลด์กับ Dynamic Fields และตัดฟิลด์ต้องห้ามออก
+  mergeWithDynamicFields(
+    savedSettings: DisplayFieldSetting[] = [],
+    extraDefinitions: FieldDefinition[] = []
+  ): DisplayFieldSetting[] {
+    const savedMap = new Map<string, boolean>();
+    savedSettings.forEach((item) => {
+      if (item && item.key) {
+        savedMap.set(item.key, item.visible);
+      }
+    });
+
+    const dynamicDisplay: DisplayFieldSetting[] = extraDefinitions
+      .filter((d) => !DEFAULT_DISPLAY_FIELDS.some((df) => df.key === d.field_key))
+      .filter((d) => !d.field_key.startsWith('__') && !SYSTEM_PRIVATE_FIELD_KEYS.has(d.field_key))
+      .map((d) => ({
+        key: d.field_key,
+        label: d.field_label,
+        category: 'ข้อมูลเสริม (Custom)' as const,
+        visible: savedMap.has(d.field_key) ? (savedMap.get(d.field_key) ?? true) : true,
+        description: `ฟิลด์เสริม (${d.field_type})`,
+      }));
+
+    const allFields = [...DEFAULT_DISPLAY_FIELDS, ...dynamicDisplay];
+
+    return allFields
+      .filter((f) => !REMOVED_FIELD_KEYS.has(f.key) && !SYSTEM_PRIVATE_FIELD_KEYS.has(f.key) && !f.key.startsWith('__'))
+      .map((f) => ({
+        ...f,
+        visible: savedMap.has(f.key) ? (savedMap.get(f.key) ?? f.visible) : f.visible,
+      }));
+  },
+
+  // 11. ดึงการตั้งค่าการเปิด/ปิด การ์ดฟิลด์ข้อมูลจากเซิร์ฟเวอร์ (Supabase) และซิงค์ลง localStorage
+  async fetchDisplayFields(): Promise<DisplayFieldSetting[]> {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('field_definitions')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const serverMap = new Map<string, boolean>();
+          const customDefs: FieldDefinition[] = [];
+          const defaultKeySet = new Set(DEFAULT_DISPLAY_FIELDS.map((f) => f.key));
+
+          (data as FieldDefinition[]).forEach((row) => {
+            if (row && row.field_key) {
+              serverMap.set(row.field_key, Boolean(row.is_active));
+              if (
+                !defaultKeySet.has(row.field_key) &&
+                !row.field_key.startsWith('__') &&
+                !SYSTEM_PRIVATE_FIELD_KEYS.has(row.field_key)
+              ) {
+                customDefs.push(row);
+              }
+            }
+          });
+
+          // Build merged display fields
+          const defaultFields = DEFAULT_DISPLAY_FIELDS.map((df) => ({
+            ...df,
+            visible: serverMap.has(df.key) ? (serverMap.get(df.key) ?? true) : true,
+          }));
+
+          const dynamicFields: DisplayFieldSetting[] = customDefs.map((cd) => ({
+            key: cd.field_key,
+            label: cd.field_label,
+            category: 'ข้อมูลเสริม (Custom)' as const,
+            visible: serverMap.has(cd.field_key) ? (serverMap.get(cd.field_key) ?? true) : true,
+            description: `ฟิลด์เสริม (${cd.field_type})`,
+          }));
+
+          const allMerged = [...defaultFields, ...dynamicFields].filter(
+            (f) => !REMOVED_FIELD_KEYS.has(f.key) && !SYSTEM_PRIVATE_FIELD_KEYS.has(f.key) && !f.key.startsWith('__')
+          );
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(LOCAL_STORAGE_DISPLAY_FIELDS_KEY, JSON.stringify(allMerged));
+          }
+
+          return allMerged;
+        }
+      } catch (err) {
+        console.warn('Supabase fetchDisplayFields error:', err);
+      }
+    }
+    return this.getDisplayFields();
+  },
+
+  // 12. ดึงการตั้งค่าการเปิด/ปิด การ์ดฟิลด์ข้อมูลที่แสดงผลแบบ synchronous (จาก cache / default)
   getDisplayFields(): DisplayFieldSetting[] {
     if (typeof window === 'undefined') return DEFAULT_DISPLAY_FIELDS;
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_DISPLAY_FIELDS_KEY);
-      const savedMap = new Map<string, boolean>();
+      let parsed: DisplayFieldSetting[] = [];
       if (stored) {
         try {
-          const parsed: DisplayFieldSetting[] = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((item) => {
-              if (item && item.key) {
-                savedMap.set(item.key, item.visible);
-              }
-            });
-          }
-        } catch (e) {
-          console.error('Error parsing stored display fields', e);
+          parsed = JSON.parse(stored);
+        } catch {
+          parsed = [];
         }
       }
-
-      // Merge dynamic custom fields from local definitions if any
       const dynamicDefs = getLocalFields();
-      const dynamicDisplay: DisplayFieldSetting[] = dynamicDefs
-        .filter((d) => !DEFAULT_DISPLAY_FIELDS.some((df) => df.key === d.field_key))
-        .map((d) => ({
-          key: d.field_key,
-          label: d.field_label,
-          category: 'ข้อมูลเสริม (Custom)' as const,
-          visible: savedMap.has(d.field_key) ? (savedMap.get(d.field_key) ?? true) : true,
-          description: `ฟิลด์เสริม (${d.field_type})`,
-        }));
-
-      const allFields = [...DEFAULT_DISPLAY_FIELDS, ...dynamicDisplay];
-
-      return allFields
-        .filter((f) => !REMOVED_FIELD_KEYS.has(f.key))
-        .map((f) => ({
-          ...f,
-          visible: savedMap.has(f.key) ? (savedMap.get(f.key) ?? f.visible) : f.visible,
-        }));
+      return this.mergeWithDynamicFields(parsed, dynamicDefs);
     } catch {
       return DEFAULT_DISPLAY_FIELDS;
     }
   },
 
-  // 12. บันทึกการตั้งค่าการเปิด/ปิด การ์ดฟิลด์ข้อมูล
-  saveDisplayFields(fields: DisplayFieldSetting[]): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(LOCAL_STORAGE_DISPLAY_FIELDS_KEY, JSON.stringify(fields));
-    } catch (e) {
-      console.error('Error saving display fields', e);
-    }
-  },
-
-  // 13. รีเซ็ตฟิลด์ที่แสดงเป็นค่าเริ่มต้น
-  resetDisplayFields(): DisplayFieldSetting[] {
+  // 13. บันทึกการตั้งค่าการเปิด/ปิด การ์ดฟิลด์ข้อมูลลงทั้งเซิร์ฟเวอร์ (Supabase) และ localStorage
+  async saveDisplayFields(fields: DisplayFieldSetting[]): Promise<void> {
     if (typeof window !== 'undefined') {
       try {
-        localStorage.removeItem(LOCAL_STORAGE_DISPLAY_FIELDS_KEY);
+        localStorage.setItem(LOCAL_STORAGE_DISPLAY_FIELDS_KEY, JSON.stringify(fields));
       } catch (e) {
-        console.error('Error resetting display fields', e);
+        console.error('Error saving display fields to localStorage', e);
       }
     }
-    return DEFAULT_DISPLAY_FIELDS;
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payloads = fields
+          .filter((f) => f && !f.key.startsWith('__') && !SYSTEM_PRIVATE_FIELD_KEYS.has(f.key))
+          .map((f) => ({
+            field_key: f.key,
+            field_label: f.label,
+            field_type: 'text',
+            is_active: Boolean(f.visible),
+          }));
+
+        const { error } = await supabase
+          .from('field_definitions')
+          .upsert(payloads, { onConflict: 'field_key' });
+
+        if (error) {
+          console.error('Supabase saveDisplayFields upsert error:', error.message);
+        }
+      } catch (err) {
+        console.error('Failed to save display fields to Supabase:', err);
+      }
+    }
   },
 
-  // 14. สลับสถานะเปิด/ปิดฟิลด์เดี่ยว
-  toggleDisplayField(key: string, visible: boolean): DisplayFieldSetting[] {
+  // 14. รีเซ็ตฟิลด์ที่แสดงเป็นค่าเริ่มต้นทั้งเซิร์ฟเวอร์และในเครื่อง
+  async resetDisplayFields(): Promise<DisplayFieldSetting[]> {
+    const resetList = DEFAULT_DISPLAY_FIELDS.map((f) => ({ ...f, visible: true }));
+    await this.saveDisplayFields(resetList);
+    return resetList;
+  },
+
+  // 15. สลับสถานะเปิด/ปิดฟิลด์เดี่ยว
+  async toggleDisplayField(key: string, visible: boolean): Promise<DisplayFieldSetting[]> {
     const list = this.getDisplayFields();
     const updated = list.map((f) => (f.key === key ? { ...f, visible } : f));
-    this.saveDisplayFields(updated);
+    await this.saveDisplayFields(updated);
     return updated;
   }
 };
