@@ -249,12 +249,30 @@ export default function PersonnelDirectoryPage() {
 
     const workbook = XLSX.utils.book_new();
 
+    const setColWidths = (ws: XLSX.WorkSheet, rows: Record<string, any>[]) => {
+      if (rows.length === 0) return;
+      const headers = Object.keys(rows[0]);
+      ws['!cols'] = headers.map((key) => {
+        let maxLen = key.length;
+        for (let i = 0; i < Math.min(rows.length, 60); i++) {
+          const val = rows[i][key];
+          if (val !== null && val !== undefined) {
+            const strLen = String(val).length;
+            if (strLen > maxLen) maxLen = strLen;
+          }
+        }
+        return { wch: Math.min(Math.max(maxLen + 3, 14), 50) };
+      });
+    };
+
     // Sheet 1: personnel (Supabase 1:1 format)
     const wsSupabase = XLSX.utils.json_to_sheet(supabaseRows);
+    setColWidths(wsSupabase, supabaseRows);
     XLSX.utils.book_append_sheet(workbook, wsSupabase, 'personnel');
 
     // Sheet 2: รายงานทำเนียบกำลังพล (Thai report)
     const wsThai = XLSX.utils.json_to_sheet(thaiReportRows);
+    setColWidths(wsThai, thaiReportRows);
     XLSX.utils.book_append_sheet(workbook, wsThai, 'รายงานทำเนียบกำลังพล');
 
     const todayStr = new Date().toISOString().split('T')[0];
