@@ -116,6 +116,17 @@ function FieldSettingsComponent() {
       });
 
       setCustomFields((prev) => [...prev, created]);
+      const newDisplay: DisplayFieldSetting = {
+        key: cleanKey,
+        label: created.field_label,
+        category: 'ข้อมูลเสริม (Custom)',
+        visible: true,
+        description: `ฟิลด์เสริม (${created.field_type})`,
+      };
+      const updatedDisplay = [...displayFields.filter((f) => f.key !== cleanKey), newDisplay];
+      setDisplayFields(updatedDisplay);
+      personnelService.saveDisplayFields(updatedDisplay);
+
       setFieldLabel('');
       setFieldKey('');
       setFieldType('text');
@@ -132,7 +143,8 @@ function FieldSettingsComponent() {
   const categories = [
     'ข้อมูลยศและชื่อ',
     'ข้อมูลสังกัดและตำแหน่ง',
-    'ข้อมูลส่วนตัวและการแพทย์'
+    'ข้อมูลส่วนตัวและการแพทย์',
+    'ข้อมูลเสริม (Custom)',
   ];
 
   const visibleCount = displayFields.filter((f) => f.visible).length;

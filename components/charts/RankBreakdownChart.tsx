@@ -54,7 +54,7 @@ export default function RankBreakdownChart({ data }: RankBreakdownChartProps) {
           />
           <Tooltip 
             formatter={(value: any, _, item: any) => [
-              `${value} นาย (${item.payload.category})`,
+              `${value} นาย (${item?.payload?.category || ''})`,
               'จำนวน'
             ]}
             contentStyle={{ 

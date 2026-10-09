@@ -7,25 +7,25 @@ import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'Engineer Division Personnel Information System',
-  description: 'ระบบสารสนเทศข้อมูลกำลังพล กองพลทหารช่าง (Engineer Division Personnel Information System)',
-  applicationName: 'iPonchor',
+  title: 'Unmiss R7 - ระบบสารสนเทศข้อมูลกำลังพล',
+  description: 'ระบบสารสนเทศข้อมูลกำลังพล กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน ผลัดที่ 7 (UNMISS R7)',
+  applicationName: 'Unmiss R7',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
-      { url: '/favicon.ico' },
-      { url: '/favicon.png', sizes: '64x64', type: 'image/png' },
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.ico?v=2' },
+      { url: '/favicon.png?v=2', sizes: '64x64', type: 'image/png' },
+      { url: '/icons/icon-192x192.png?v=2', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png?v=2', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/icons/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },
     ],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'iPonchor',
+    title: 'Unmiss R7',
   },
 };
 
@@ -46,6 +46,9 @@ export default function RootLayout({
   return (
     <html lang="th">
       <head>
+        <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v=2" />
+        <link rel="shortcut icon" href="/favicon.ico?v=2" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
@@ -67,8 +70,8 @@ export default function RootLayout({
           {/* Footer (hidden on mobile) */}
           <footer className="hidden md:block bg-white border-t border-gray-200 py-6 mt-12 text-center text-xs text-gray-500">
             <div className="max-w-7xl mx-auto px-4">
-              <p className="font-semibold text-gray-700">Engineer Division Personnel Information System (iPonchor)</p>
-              <p className="text-gray-400 mt-1">ระบบสารสนเทศข้อมูลกำลังพล กองพลทหารช่าง • Progressive Web App (PWA)</p>
+              <p className="font-semibold text-gray-700">UNMISS Rotation 7 Personnel Information System (Unmiss R7)</p>
+              <p className="text-gray-400 mt-1">กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน ผลัดที่ 7 • Progressive Web App (PWA)</p>
             </div>
           </footer>
         </AuthProvider>

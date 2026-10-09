@@ -56,10 +56,22 @@ export default function PersonnelDirectoryPage() {
 
   useEffect(() => {
     fetchPersonnel();
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      setViewMode('table');
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('unmiss_view_mode') as 'card' | 'table' | null;
+      if (saved === 'card' || saved === 'table') {
+        setViewMode(saved);
+      } else {
+        setViewMode('card');
+      }
     }
   }, []);
+
+  const handleSetViewMode = (mode: 'card' | 'table') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('unmiss_view_mode', mode);
+    } catch {}
+  };
 
   // Filter options lists
   const departmentOptions = useMemo(() => {
@@ -82,19 +94,32 @@ export default function PersonnelDirectoryPage() {
   const filteredList = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
 
+    const termDigits = term.replace(/[^0-9]/g, '');
+
     return personnelList.filter((p) => {
+      const pFull = String(p.full_name_th || '').toLowerCase();
+      const pRank = String(p.rank_th || '').toLowerCase();
+      const pFirst = String(p.first_name_th || '').toLowerCase();
+      const pLast = String(p.last_name_th || '').toLowerCase();
+      const pNick = String(p.nickname || '').toLowerCase();
+      const pFirstEn = String(p.first_name_en || '').toLowerCase();
+      const pLastEn = String(p.last_name_en || '').toLowerCase();
+      const pMil = String(p.military_id || '').toLowerCase();
+      const pCit = String(p.citizen_id || '').replace(/[^0-9]/g, '');
+      const pPhone = String(p.phone_number || '');
+
       const matchesSearch =
         !term ||
-        (p.full_name_th && p.full_name_th.toLowerCase().includes(term)) ||
-        (p.rank_th && p.rank_th.toLowerCase().includes(term)) ||
-        (p.first_name_th && p.first_name_th.toLowerCase().includes(term)) ||
-        (p.last_name_th && p.last_name_th.toLowerCase().includes(term)) ||
-        (p.nickname && p.nickname.toLowerCase().includes(term)) ||
-        (p.first_name_en && p.first_name_en.toLowerCase().includes(term)) ||
-        (p.last_name_en && p.last_name_en.toLowerCase().includes(term)) ||
-        (p.military_id && p.military_id.toLowerCase().includes(term)) ||
-        (p.citizen_id && p.citizen_id.replace(/[^0-9]/g, '').includes(term.replace(/[^0-9]/g, ''))) ||
-        (p.phone_number && p.phone_number.includes(term));
+        pFull.includes(term) ||
+        pRank.includes(term) ||
+        pFirst.includes(term) ||
+        pLast.includes(term) ||
+        pNick.includes(term) ||
+        pFirstEn.includes(term) ||
+        pLastEn.includes(term) ||
+        pMil.includes(term) ||
+        (Boolean(termDigits) && pCit.includes(termDigits)) ||
+        pPhone.includes(term);
 
       const matchesDept =
         filterDepartment === 'ALL' || p.department === filterDepartment;
@@ -103,10 +128,7 @@ export default function PersonnelDirectoryPage() {
         filterRank === 'ALL' || p.rank_en === filterRank;
 
       const matchesDuty =
-        filterDutyStatus === 'ALL' ||
-        (filterDutyStatus === 'ช่วยราชการ'
-          ? p.duty_status === 'ช่วยราชการ'
-          : p.duty_status !== 'ช่วยราชการ');
+        filterDutyStatus === 'ALL' || p.duty_status === filterDutyStatus;
 
       return matchesSearch && matchesDept && matchesRank && matchesDuty;
     });
@@ -133,15 +155,62 @@ export default function PersonnelDirectoryPage() {
       return;
     }
 
-    const exportData = filteredList.map((p) => {
-      const split = splitFullNameTh(p.full_name_th);
+    // 1. Sheet 1: Exact Supabase Table Columns (Excluding created_at & updated_at)
+    const supabaseRows = filteredList.map((p) => {
+      const split = splitFullNameTh(p.full_name_th || '');
       const rank_th = p.rank_th || split.rank_th || '';
       const first_name_th = p.first_name_th || split.first_name_th || '';
       const last_name_th = p.last_name_th || split.last_name_th || '';
-      const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th);
+      const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th) || '';
+
+      const customStr = p.custom_fields && typeof p.custom_fields === 'object' && Object.keys(p.custom_fields).length > 0
+        ? JSON.stringify(p.custom_fields)
+        : '{}';
 
       return {
-        'ลำดับ (No)': p.seq_no,
+        id: p.id || '',
+        service_code: p.service_code || '',
+        seq_no: p.seq_no ?? '',
+        rank_th: rank_th,
+        first_name_th: first_name_th,
+        last_name_th: last_name_th,
+        full_name_th: full_name_th,
+        nickname: p.nickname || '',
+        rank_en: p.rank_en || '',
+        first_name_en: p.first_name_en || '',
+        last_name_en: p.last_name_en || '',
+        military_id: p.military_id || '',
+        citizen_id: p.citizen_id || '',
+        field_position: p.field_position || '',
+        regular_position: p.regular_position || '',
+        duty_status: p.duty_status || '',
+        salary_step: p.salary_step || '',
+        blood_group: p.blood_group || '',
+        phone_number: p.phone_number || '',
+        department: p.department || '',
+        religion: p.religion || '',
+        birth_date: p.birth_date || '',
+        passport_no: p.passport_no || '',
+        photo_url: p.photo_url || '',
+        custom_fields: customStr,
+      };
+    });
+
+    // 2. Sheet 2: Thai Report Format with every single field labeled in Thai
+    const thaiReportRows = filteredList.map((p) => {
+      const split = splitFullNameTh(p.full_name_th || '');
+      const rank_th = p.rank_th || split.rank_th || '';
+      const first_name_th = p.first_name_th || split.first_name_th || '';
+      const last_name_th = p.last_name_th || split.last_name_th || '';
+      const full_name_th = p.full_name_th || formatFullNameTh(rank_th, first_name_th, last_name_th) || '';
+
+      const customStr = p.custom_fields && typeof p.custom_fields === 'object' && Object.keys(p.custom_fields).length > 0
+        ? JSON.stringify(p.custom_fields)
+        : '{}';
+
+      return {
+        'ลำดับ (No)': p.seq_no ?? '',
+        'รหัสกำลังพล / PKF ID': p.service_code || '',
         'ยศ (ไทย)': rank_th,
         'ชื่อ (ไทย)': first_name_th,
         'นามสกุล (ไทย)': last_name_th,
@@ -152,24 +221,34 @@ export default function PersonnelDirectoryPage() {
         'LASTNAME (EN)': p.last_name_en || '',
         'หมายเลขประจำตัวทหาร': p.military_id || '',
         'หมายเลขประชาชน': p.citizen_id || '',
+        'หนังสือเดินทาง (PASSPORT)': p.passport_no || '',
+        'ส่วนงาน / กองร้อย': p.department || '',
         'ตำแหน่งปกติ': p.regular_position || '',
-        'สถานะกำลังพล': p.duty_status || 'บรรจุ',
+        'ตำแหน่งในสนาม': p.field_position || '',
+        'สังกัดเหล่าทัพ (ทบ./ทท./ทร.)': p.duty_status || '',
         'ขั้นเงินเดือน': p.salary_step || '',
         'กลุ่มเลือด': p.blood_group || '',
         'เบอร์ติดต่อ': p.phone_number || '',
-        'ส่วนงาน/กองร้อย': p.department || '',
         'ศาสนา': p.religion || '',
         'วัน เดือน ปี เกิด': p.birth_date || '',
         'ลิงก์รูปถ่าย': p.photo_url || '',
+        'ข้อมูลเสริม (JSON)': customStr,
+        'รหัสประจำตัว (UUID)': p.id || '',
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'ทำเนียบกำลังพล');
+
+    // Sheet 1: personnel (Supabase 1:1 format)
+    const wsSupabase = XLSX.utils.json_to_sheet(supabaseRows);
+    XLSX.utils.book_append_sheet(workbook, wsSupabase, 'personnel');
+
+    // Sheet 2: รายงานทำเนียบกำลังพล (Thai report)
+    const wsThai = XLSX.utils.json_to_sheet(thaiReportRows);
+    XLSX.utils.book_append_sheet(workbook, wsThai, 'รายงานทำเนียบกำลังพล');
 
     const todayStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(workbook, `ทำเนียบกำลังพล_กองพลทหารช่าง_${todayStr}.xlsx`);
+    XLSX.writeFile(workbook, `ทำเนียบกำลังพล_Unmiss_R7_Supabase_${todayStr}.xlsx`);
   };
 
   // Delete Handler (Admin Only)
@@ -195,7 +274,7 @@ export default function PersonnelDirectoryPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center space-x-2.5">
             <Users className="w-7 h-7 sm:w-8 sm:h-8 text-slate-800 flex-shrink-0" />
-            <span>ทำเนียบกำลังพล กองพลทหารช่าง</span>
+            <span>ทำเนียบกำลังพล Unmiss R7</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-500 font-medium mt-1">
             ค้นหา ตรวจสอบข้อมูล และโทรติดต่อได้ทันที
@@ -275,8 +354,8 @@ export default function PersonnelDirectoryPage() {
           <div className="flex items-center bg-slate-100 p-1 rounded-2xl">
             <button
               type="button"
-              onClick={() => setViewMode('card')}
-              className={`p-2.5 rounded-xl text-sm font-bold transition-all ${
+              onClick={() => handleSetViewMode('card')}
+              className={`p-2.5 rounded-xl text-sm font-bold transition-all flex items-center space-x-1.5 ${
                 viewMode === 'card'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -284,11 +363,12 @@ export default function PersonnelDirectoryPage() {
               title="มุมมองการ์ด (Card View)"
             >
               <LayoutGrid className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-bold">การ์ด</span>
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-2.5 rounded-xl text-sm font-bold transition-all ${
+              onClick={() => handleSetViewMode('table')}
+              className={`p-2.5 rounded-xl text-sm font-bold transition-all flex items-center space-x-1.5 ${
                 viewMode === 'table'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -296,6 +376,7 @@ export default function PersonnelDirectoryPage() {
               title="มุมมองตาราง (Table View)"
             >
               <List className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-bold">ตาราง</span>
             </button>
           </div>
         </div>
@@ -316,8 +397,8 @@ export default function PersonnelDirectoryPage() {
                 </span>
               )}
               {filterDutyStatus !== 'ALL' && (
-                <span className="bg-amber-100 text-amber-900 px-3 py-1 rounded-xl font-bold">
-                  สถานะ: {filterDutyStatus}
+                <span className="bg-emerald-100 text-emerald-900 px-3 py-1 rounded-xl font-bold">
+                  สังกัด: {filterDutyStatus}
                 </span>
               )}
             </div>
@@ -335,15 +416,16 @@ export default function PersonnelDirectoryPage() {
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 border-t border-slate-100 animate-in fade-in duration-150">
             <div>
-              <label className="block text-slate-800 font-bold mb-1.5 text-sm sm:text-base">สถานะกำลังพล</label>
+              <label className="block text-slate-800 font-bold mb-1.5 text-sm sm:text-base">สังกัดเหล่าทัพ</label>
               <select
                 value={filterDutyStatus}
                 onChange={(e) => setFilterDutyStatus(e.target.value)}
                 className="w-full py-3 px-3.5 rounded-2xl border border-slate-200 bg-white text-slate-800 text-sm sm:text-base font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
-                <option value="ALL">สถานะทั้งหมด (All)</option>
-                <option value="บรรจุ">บรรจุ (ปกติ)</option>
-                <option value="ช่วยราชการ">ช่วยราชการ</option>
+                <option value="ALL">สังกัดทั้งหมด (All)</option>
+                <option value="ทบ.">ทบ. (กองทัพบก)</option>
+                <option value="ทท.">ทท. (กองบัญชาการกองทัพไทย)</option>
+                <option value="ทร.">ทร. (กองทัพเรือ)</option>
               </select>
             </div>
 
@@ -401,7 +483,7 @@ export default function PersonnelDirectoryPage() {
           <p className="text-xs sm:text-sm text-gray-400">กำลังโหลดข้อมูลกำลังพล...</p>
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {filteredList.map((p) => (
             <PersonnelCard key={p.id} personnel={p} />
           ))}

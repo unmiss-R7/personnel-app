@@ -14,9 +14,12 @@ import {
   MessageSquare,
   Copy,
   Check,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FileText,
+  Briefcase,
+  HeartPulse
 } from 'lucide-react';
-import { personnelService } from '@/lib/personnelService';
+import { personnelService, REMOVED_FIELD_KEYS } from '@/lib/personnelService';
 import { Personnel, FieldDefinition, DisplayFieldSetting } from '@/types/personnel';
 import { useAuth } from '@/context/AuthContext';
 import QuickActionBar from '@/components/QuickActionBar';
@@ -64,6 +67,7 @@ export default function PersonnelDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -76,7 +80,31 @@ export default function PersonnelDetailPage() {
         ]);
         setPersonnel(personnelData);
         setFieldDefs(fields);
-        setDisplayFields(personnelService.getDisplayFields());
+
+        const baseDisplay = personnelService.getDisplayFields();
+        if (personnelData?.custom_fields) {
+          const existingKeys = new Set(baseDisplay.map((f) => f.key));
+          const extraFields: DisplayFieldSetting[] = [];
+          Object.keys(personnelData.custom_fields).forEach((k) => {
+            if (!existingKeys.has(k) && !REMOVED_FIELD_KEYS.has(k)) {
+              const def = fields.find((f) => f.field_key === k);
+              extraFields.push({
+                key: k,
+                label: def?.field_label || k,
+                category: 'ข้อมูลเสริม (Custom)',
+                visible: true,
+                description: `ฟิลด์เสริม (${k})`,
+              });
+            }
+          });
+          if (extraFields.length > 0) {
+            setDisplayFields([...baseDisplay, ...extraFields]);
+          } else {
+            setDisplayFields(baseDisplay);
+          }
+        } else {
+          setDisplayFields(baseDisplay);
+        }
       } catch (err) {
         console.error('Error fetching personnel detail:', err);
       } finally {
@@ -88,7 +116,28 @@ export default function PersonnelDetailPage() {
 
   const isFieldVisible = (key: string): boolean => {
     const found = displayFields.find((f) => f.key === key);
-    return found ? found.visible : true;
+    return found ? found.visible : false;
+  };
+
+  const getFieldValue = (key: string): string => {
+    if (!personnel) return '-';
+
+    let val: any = (personnel as any)[key];
+    if (val === undefined || val === null || val === '') {
+      if (personnel.custom_fields && personnel.custom_fields[key] !== undefined && personnel.custom_fields[key] !== null) {
+        val = personnel.custom_fields[key];
+      }
+    }
+
+    if (val === undefined || val === null || val === '' || val === '-') {
+      return '-';
+    }
+
+    if (key === 'birth_date') {
+      return formatBirthDate(String(val));
+    }
+
+    return String(val);
   };
 
   const handleCopy = (text: string, fieldName: string) => {
@@ -200,19 +249,18 @@ export default function PersonnelDetailPage() {
         {/* 2. Centered Profile Header */}
         <div className="flex flex-col items-center text-center">
           {/* Rounded portrait photo */}
-          <div className="relative w-32 h-42 sm:w-40 sm:h-52 rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center mb-3 ring-2 ring-slate-100">
-            {personnel.photo_url ? (
-              <Image
+          <div className="relative w-[130px] h-[168px] sm:w-[160px] sm:h-[208px] rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center mb-3 ring-2 ring-slate-100 flex-shrink-0">
+            {personnel.photo_url && !imgError ? (
+              <img
                 src={personnel.photo_url}
-                alt={personnel.full_name_th}
-                fill
-                className="object-cover object-top"
-                priority
-                unoptimized
+                alt={personnel.full_name_th || 'รูปประจำตัว'}
+                className="w-full h-full object-cover object-top"
+                onError={() => setImgError(true)}
+                loading="eager"
               />
             ) : (
-              <div className="flex flex-col items-center justify-center text-slate-400 p-4">
-                <User className="w-12 h-12 sm:w-16 sm:h-16" />
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-slate-50">
+                <User className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300" />
                 <span className="text-xs sm:text-sm text-slate-400 mt-1.5 font-semibold">ไม่มีรูปถ่าย</span>
               </div>
             )}
@@ -223,10 +271,29 @@ export default function PersonnelDetailPage() {
             {personnel.full_name_th}
           </h1>
 
-          {/* Nickname */}
+          {/* English Rank & Name */}
+          {(personnel.rank_en || personnel.first_name_en || personnel.last_name_en) && (
+            <p className="text-sm sm:text-base font-mono text-slate-500 font-semibold mt-1">
+              {[personnel.rank_en, personnel.first_name_en, personnel.last_name_en].filter(Boolean).join(' ')}
+            </p>
+          )}
+
+          {/* PKF Number badge (shows only the PKF number) */}
+          {personnel.service_code && (
+            <div className="mt-2.5">
+              <span className="inline-flex items-center text-sm sm:text-base font-mono font-bold text-sky-900 bg-sky-50 border border-sky-200/90 px-4 py-1 rounded-full shadow-2xs tracking-wide">
+                {personnel.service_code}
+              </span>
+            </div>
+          )}
+
+          {/* Nickname (on its own line below PKF number) */}
           {personnel.nickname && (
-            <div className="mt-2 text-base sm:text-lg font-bold text-slate-700 bg-slate-100 px-5 py-1.5 rounded-full inline-block">
-              ชื่อเล่น: <span className="text-slate-950 font-black">{personnel.nickname}</span>
+            <div className="mt-2">
+              <span className="inline-flex items-center text-sm sm:text-base font-bold text-slate-800 bg-amber-50 border border-amber-200/90 px-4 py-1 rounded-full shadow-2xs">
+                <span className="text-amber-800 font-semibold">ชื่อเล่น:</span>
+                <strong className="text-slate-950 font-black ml-1.5">{personnel.nickname}</strong>
+              </span>
             </div>
           )}
         </div>
@@ -251,59 +318,43 @@ export default function PersonnelDetailPage() {
           </div>
         )}
 
-        {/* 3. Detailed Grid Layout: Only render visible field cards */}
-        <div className="space-y-3 sm:space-y-4">
-          {/* แถวที่ 1: RANK (EN), NAME (EN), LASTNAME (EN), หมายเลขประจำตัว */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-            {isFieldVisible('rank_en') && <GridItem label="RANK (EN)" value={personnel.rank_en} />}
-            {isFieldVisible('first_name_en') && <GridItem label="NAME (EN)" value={personnel.first_name_en} />}
-            {isFieldVisible('last_name_en') && <GridItem label="LASTNAME (EN)" value={personnel.last_name_en} />}
-            {isFieldVisible('military_id') && <GridItem label="หมายเลขประจำตัว" value={personnel.military_id} />}
-          </div>
+        {/* 3. Detailed Grid Layout: Grouped by categories and controlled by Display Settings */}
+        <div className="space-y-6">
+          {[
+            { name: 'ข้อมูลยศและชื่อ', icon: <FileText className="w-4 h-4 text-blue-600" /> },
+            { name: 'ข้อมูลสังกัดและตำแหน่ง', icon: <Briefcase className="w-4 h-4 text-indigo-600" /> },
+            { name: 'ข้อมูลส่วนตัวและการแพทย์', icon: <HeartPulse className="w-4 h-4 text-rose-600" /> },
+            { name: 'ข้อมูลเสริม (Custom)', icon: <Sparkles className="w-4 h-4 text-amber-500" /> },
+          ].map(({ name, icon }) => {
+            const catFields = displayFields.filter((f) => f.category === name && f.visible);
+            if (catFields.length === 0) return null;
 
-          {/* แถวที่ 2: หมายเลขประชาชน, ตำแหน่งปกติ, สถานะกำลังพล */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-            {isFieldVisible('citizen_id') && <GridItem label="หมายเลขประชาชน" value={personnel.citizen_id} />}
-            {isFieldVisible('regular_position') && <GridItem label="ตำแหน่งปกติ" value={personnel.regular_position} />}
-            {isFieldVisible('duty_status') && <GridItem label="สถานะกำลังพล" value={personnel.duty_status || 'บรรจุ'} />}
-          </div>
+            return (
+              <div key={name} className="space-y-3">
+                <div className="flex items-center space-x-2 text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">
+                  {icon}
+                  <span>{name}</span>
+                  <span className="text-xs font-mono text-slate-400 font-medium">
+                    ({catFields.length})
+                  </span>
+                </div>
 
-          {/* แถวที่ 3: กลุ่มเลือด, เบอร์ติดต่อ, ส่วนงาน, ศาสนา */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-            {isFieldVisible('blood_group') && <GridItem label="กลุ่มเลือด" value={personnel.blood_group} />}
-            {isFieldVisible('phone_number') && <GridItem label="เบอร์ติดต่อ" value={personnel.phone_number} isPhone />}
-            {isFieldVisible('department') && <GridItem label="ส่วนงาน" value={personnel.department} />}
-            {isFieldVisible('religion') && <GridItem label="ศาสนา" value={personnel.religion} />}
-          </div>
-
-          {/* แถวที่ 4: วัน เดือน ปี เกิด */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-            {isFieldVisible('birth_date') && (
-              <div className="sm:col-span-2 lg:col-span-4">
-                <GridItem 
-                  label="วัน เดือน ปี เกิด" 
-                  value={formatBirthDate(personnel.birth_date)} 
-                />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                  {catFields.map((field) => {
+                    const val = getFieldValue(field.key);
+                    return (
+                      <GridItem
+                        key={field.key}
+                        label={field.label}
+                        value={val}
+                        isPhone={field.key === 'phone_number'}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </div>
-
-          {/* 4. Custom Fields (JSONB) */}
-          {personnel.custom_fields && Object.keys(personnel.custom_fields).length > 0 && (
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <div className="flex items-center space-x-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>ข้อมูลเพิ่มเติม (Custom Fields)</span>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-                {Object.entries(personnel.custom_fields).map(([key, val]) => {
-                  const def = fieldDefs.find((f) => f.field_key === key);
-                  const label = def?.field_label || key;
-                  return <GridItem key={key} label={label} value={String(val)} />;
-                })}
-              </div>
-            </div>
-          )}
+            );
+          })}
         </div>
 
         {/* Desktop Bottom Action Controls */}

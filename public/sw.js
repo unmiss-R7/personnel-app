@@ -1,5 +1,5 @@
-// Service Worker for Engineer Division Personnel Information System (iPonchor)
-const CACHE_NAME = 'iponchor-cache-v1';
+// Service Worker for Unmiss R7 Personnel Information System
+const CACHE_NAME = 'unmiss-r7-cache-v2';
 
 const STATIC_ASSETS = [
   '/',

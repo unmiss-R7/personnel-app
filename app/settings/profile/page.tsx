@@ -171,14 +171,13 @@ export default function UserProfileSettingsPage() {
       {/* User Header Card */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-xs">
         <div className="flex items-center space-x-4">
-          <div className="relative w-22 h-28 sm:w-24 sm:h-30 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center shadow-xs">
+          <div className="relative w-20 h-28 sm:w-24 sm:h-32 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center shadow-xs">
             {personnelData?.photo_url || user?.photo_url ? (
-              <Image
+              <img
                 src={personnelData?.photo_url || user?.photo_url || ''}
                 alt="Profile"
-                fill
-                className="object-cover object-top"
-                unoptimized
+                className="w-full h-full object-cover object-top"
+                loading="eager"
               />
             ) : (
               <User className="w-10 h-10 text-slate-400" />
@@ -200,7 +199,7 @@ export default function UserProfileSettingsPage() {
               </span>
             </div>
             <p className="text-sm sm:text-base text-slate-500 font-semibold mt-1.5 truncate">
-              {personnelData?.department || user?.department || 'กองพลทหารช่าง'}
+              {personnelData?.department || user?.department || 'Unmiss R7'}
             </p>
           </div>
         </div>

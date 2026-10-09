@@ -52,24 +52,25 @@ export default function LoginPage() {
         
         {/* Brand Header */}
         <div className="text-center space-y-3">
-          <div className="w-22 h-22 rounded-2xl overflow-hidden bg-[#0e2617] p-1 mx-auto shadow-lg border border-amber-500/40 flex items-center justify-center">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-white p-1 mx-auto shadow-md border border-slate-200/90 flex items-center justify-center">
             <Image
               src="/icons/logo.png"
-              alt="Engineer Division Logo"
+              alt="Unmiss R7 Logo"
               width={88}
               height={88}
               className="w-full h-full object-contain"
               priority
+              unoptimized
             />
           </div>
-          <div className="inline-block px-3 py-1 rounded-full bg-[#0e2617] text-amber-400 text-xs sm:text-sm font-bold border border-amber-500/30">
-            iPonchor
+          <div className="inline-block px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs sm:text-sm font-bold border border-sky-300">
+            UNMISS R7
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Engineer Division
+            Unmiss R7
           </h1>
           <p className="text-sm sm:text-base text-slate-500 font-semibold">
-            กองพลทหารช่าง • ระบบสารสนเทศข้อมูลกำลังพล
+            กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน ผลัด 7
           </p>
         </div>
 

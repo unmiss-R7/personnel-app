@@ -52,7 +52,7 @@ function EditPersonnelForm() {
     blood_group: 'O',
     phone_number: '',
     department: '',
-    duty_status: 'บรรจุ',
+    duty_status: 'ทบ.',
     religion: 'พุทธ',
     birth_date: '',
     photo_url: '',
@@ -91,7 +91,7 @@ function EditPersonnelForm() {
             citizen_id: personnel.citizen_id || '',
             regular_position: personnel.regular_position || '',
             salary_step: personnel.salary_step || '',
-            duty_status: personnel.duty_status || 'บรรจุ',
+            duty_status: personnel.duty_status || 'ทบ.',
             blood_group: personnel.blood_group || 'O',
             phone_number: personnel.phone_number || '',
             department: personnel.department || '',
@@ -226,7 +226,7 @@ function EditPersonnelForm() {
             </div>
             <div>
               <label className="block text-base sm:text-lg font-bold text-slate-800 mb-2">
-                สถานะกำลังพล (duty_status) *
+                สังกัดเหล่าทัพ (duty_status) *
               </label>
               <select
                 name="duty_status"
@@ -234,8 +234,9 @@ function EditPersonnelForm() {
                 onChange={handleChange}
                 className="w-full px-4 py-3.5 sm:py-4 rounded-2xl border border-slate-300 text-base sm:text-lg font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
               >
-                <option value="บรรจุ">บรรจุ (ปกติ)</option>
-                <option value="ช่วยราชการ">ช่วยราชการ</option>
+                <option value="ทบ.">ทบ. (กองทัพบก)</option>
+                <option value="ทท.">ทท. (กองบัญชาการกองทัพไทย)</option>
+                <option value="ทร.">ทร. (กองทัพเรือ)</option>
               </select>
             </div>
           </div>

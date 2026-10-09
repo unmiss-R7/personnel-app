@@ -56,30 +56,31 @@ export default function Navbar() {
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-gray-200/90 sticky top-0 z-40 shadow-sm safe-top">
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-18">
+        <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Brand Logo & Title */}
           <Link href="/" className="flex items-center space-x-2.5 sm:space-x-3.5 group">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden bg-[#0e2617] p-0.5 shadow-md group-hover:scale-105 transition-transform flex-shrink-0 flex items-center justify-center border border-amber-500/40">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden bg-white p-0.5 shadow-md group-hover:scale-105 transition-transform flex-shrink-0 flex items-center justify-center border border-slate-200/90">
               <Image
                 src="/icons/logo.png"
-                alt="Engineer Division Logo"
+                alt="Unmiss R7 Logo"
                 width={48}
                 height={48}
                 className="w-full h-full object-contain"
                 priority
+                unoptimized
               />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-1.5">
                 <span className="text-base sm:text-lg font-black text-slate-900 leading-tight tracking-tight">
-                  Engineer Division
+                  Unmiss R7
                 </span>
-                <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-[#0e2617] text-amber-400 border border-amber-500/30">
-                  iPonchor
+                <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-300">
+                  UNMISS
                 </span>
               </div>
               <span className="text-xs sm:text-sm text-slate-500 font-semibold tracking-tight truncate max-w-[210px] sm:max-w-none">
-                กองพลทหารช่าง • ระบบสารสนเทศกำลังพล
+                กองร้อยทหารช่างเฉพาะกิจ ไทย/เซาท์ซูดาน ผลัด 7
               </span>
             </div>
           </Link>

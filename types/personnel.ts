@@ -87,8 +87,35 @@ export interface KPIStats {
   departmentsCount: number;
   withPhotoCount: number;
   withoutPhotoCount: number;
-  assignedCount: number;
-  detachedCount: number;
+  dutyStatusCounts: Record<string, number>;
+  genderCounts: Record<string, number>;
+  religionCounts: Record<string, number>;
+  assignedCount?: number;
+  detachedCount?: number;
+}
+
+export interface DutyStatusStat {
+  name: string;
+  count: number;
+  percentage: number;
+  color: string;
+  bg: string;
+}
+
+export interface GenderStat {
+  name: string;
+  count: number;
+  percentage: number;
+  color: string;
+  bg: string;
+}
+
+export interface ReligionStat {
+  name: string;
+  count: number;
+  percentage: number;
+  color: string;
+  bg: string;
 }
 
 export interface DepartmentStat {

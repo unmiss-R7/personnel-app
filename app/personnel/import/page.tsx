@@ -63,7 +63,7 @@ function ExcelImportComponent() {
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'แม่แบบนำเข้ากำลังพล');
-    XLSX.writeFile(workbook, 'Template_นำเข้าข้อมูลกำลังพล_กองพลทหารช่าง.xlsx');
+    XLSX.writeFile(workbook, 'Template_นำเข้าข้อมูลกำลังพล_Unmiss_R7.xlsx');
   };
 
   // 2. Parse uploaded file
@@ -117,15 +117,26 @@ function ExcelImportComponent() {
           military_id: String(row['หมายเลขประจำตัวทหาร'] || row['military_id'] || '').trim() || null,
           citizen_id: String(row['หมายเลขประชาชน'] || row['citizen_id'] || '').trim() || null,
           regular_position: String(row['ตำแหน่งปกติ'] || row['regular_position'] || '').trim() || null,
-          duty_status: String(row['สถานะกำลังพล'] || row['duty_status'] || '').trim() === 'ช่วยราชการ' ? 'ช่วยราชการ' : 'บรรจุ',
+          field_position: String(row['ตำแหน่งในสนาม'] || row['field_position'] || '').trim() || null,
+          duty_status: String(row['สังกัด'] || row['สังกัดเหล่าทัพ'] || row['สถานะกำลังพล'] || row['duty_status'] || 'ทบ.').trim() || 'ทบ.',
           salary_step: String(row['ขั้นเงินเดือน'] || row['salary_step'] || '').trim() || null,
           blood_group: String(row['กลุ่มเลือด'] || row['blood_group'] || 'O').trim() || null,
           phone_number: String(row['เบอร์ติดต่อ'] || row['phone_number'] || '').trim() || null,
           department: String(row['ส่วนงาน/กองร้อย'] || row['ส่วนงาน'] || row['department'] || '').trim() || null,
           religion: String(row['ศาสนา'] || row['religion'] || 'พุทธ').trim() || null,
           birth_date: String(row['วัน เดือน ปี เกิด'] || row['birth_date'] || '').trim() || null,
+          passport_no: String(row['หนังสือเดินทาง (PASSPORT)'] || row['หนังสือเดินทาง'] || row['passport_no'] || '').trim() || null,
           photo_url: String(row['ลิงก์รูปถ่าย'] || row['photo_url'] || '').trim() || null,
-          custom_fields: {},
+          custom_fields: (() => {
+            if (row['custom_fields']) {
+              try {
+                return typeof row['custom_fields'] === 'object' ? row['custom_fields'] : JSON.parse(String(row['custom_fields']));
+              } catch {
+                return {};
+              }
+            }
+            return {};
+          })(),
         };
       });
 

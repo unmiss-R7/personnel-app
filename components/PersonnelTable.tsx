@@ -67,18 +67,23 @@ export default function PersonnelTable({
 
                 {/* Names */}
                 <td className="px-4 py-3.5">
-                  <div className="text-base sm:text-lg font-black text-slate-900 flex items-center space-x-2 flex-wrap gap-1">
+                  <div className="text-sm sm:text-base font-bold text-slate-900 flex items-center space-x-2 flex-wrap gap-1">
                     <Link href={`/personnel/${p.id}`} className="hover:text-blue-600 transition-colors">
-                      {p.full_name_th || [p.rank_th, p.first_name_th, p.last_name_th].filter(Boolean).join(' ')}
+                      {p.full_name_th || [p.rank_th, p.first_name_th, p.last_name_th].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'}
                     </Link>
                     {p.nickname && (
-                      <span className="text-sm sm:text-base text-slate-500 font-bold">
+                      <span className="text-xs sm:text-sm text-slate-500 font-semibold">
                         ({p.nickname})
                       </span>
                     )}
-                    {p.duty_status === 'ช่วยราชการ' && (
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
-                        ช่วยราชการ
+                    {p.duty_status && (
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-lg border ${
+                        p.duty_status === 'ทบ.' ? 'bg-emerald-100 text-emerald-900 border-emerald-300' :
+                        p.duty_status === 'ทท.' ? 'bg-purple-100 text-purple-900 border-purple-300' :
+                        p.duty_status === 'ทร.' ? 'bg-blue-100 text-blue-900 border-blue-300' :
+                        'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>
+                        {p.duty_status}
                       </span>
                     )}
                   </div>
@@ -114,11 +119,11 @@ export default function PersonnelTable({
                 <td className="px-4 py-3.5 text-sm sm:text-base font-mono whitespace-nowrap">
                   {p.phone_number ? (
                     <a
-                      href={`tel:${p.phone_number.replace(/[^0-9]/g, '')}`}
+                      href={`tel:${String(p.phone_number).replace(/[^0-9]/g, '')}`}
                       className="text-slate-800 hover:text-emerald-700 flex items-center space-x-1.5 font-bold"
                     >
                       <Phone className="w-4 h-4 text-emerald-600" />
-                      <span>{p.phone_number}</span>
+                      <span>{String(p.phone_number)}</span>
                     </a>
                   ) : (
                     <span className="text-slate-400">-</span>
