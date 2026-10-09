@@ -10,7 +10,7 @@ interface AdminOnlyGuardProps {
 }
 
 export default function AdminOnlyGuard({ children }: AdminOnlyGuardProps) {
-  const { isAdmin, isLoading, toggleRole } = useAuth();
+  const { isAdmin, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -44,14 +44,12 @@ export default function AdminOnlyGuard({ children }: AdminOnlyGuardProps) {
             <span>กลับหน้าทำเนียบ</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={toggleRole}
-            className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold transition-all active:scale-95 hover:bg-amber-100"
+          <Link
+            href="/login"
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all active:scale-95"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>สลับเป็น Admin ทันที</span>
-          </button>
+            <span>เข้าสู่ระบบใหม่</span>
+          </Link>
         </div>
       </div>
     );
