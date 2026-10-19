@@ -640,12 +640,18 @@ export const personnelService = {
 
     if (isSupabaseConfigured()) {
       const payloads = formattedList.map((item) => prepareSupabasePayload(item, false));
-      const { data, error } = await supabase.from('personnel').insert(payloads).select();
-      if (error) {
-        console.error('Supabase bulkInsert error:', error);
-        throw new Error(`นำเข้าข้อมูลไปยัง Supabase ไม่สำเร็จ: ${error.message}`);
+      let totalInserted = 0;
+      const CHUNK_SIZE = 50;
+      for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+        const chunk = payloads.slice(i, i + CHUNK_SIZE);
+        const { data, error } = await supabase.from('personnel').insert(chunk).select();
+        if (error) {
+          console.error('Supabase bulkInsert error:', error);
+          throw new Error(`นำเข้าข้อมูลไปยัง Supabase ไม่สำเร็จ: ${error.message}`);
+        }
+        totalInserted += (data ? data.length : chunk.length);
       }
-      return data ? data.length : 0;
+      return totalInserted;
     }
 
     const currentList = getLocalPersonnel();
